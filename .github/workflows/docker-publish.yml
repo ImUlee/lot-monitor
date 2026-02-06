@@ -24,4 +24,4 @@ jobs:
         context: .
         push: true
         # 修改下方 yourname 为您的 Docker Hub 用户名
-        tags: yourname/livepulse:latest
+        tags: leeone/gepilot:latest
