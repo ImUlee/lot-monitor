@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="互动监控">
+    <link rel="apple-touch-icon" href="/static/icon.png">
+    <link rel="manifest" href="/manifest.json">
+
+    <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+
+    <title>GePilot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+
+    <style>
+        /* --- 变量定义 --- */
+        :root {
+            /* 日间模式 */
+            --app-bg: #F2F2F7;
+            --card-bg: #FFFFFF;
+            --text-main: #1C1C1E;
+            --text-sub: #8E8E93;
+            --border-color: #E5E5EA;
+            --input-bg: #FFFFFF;
+            --input-border: #E5E5EA;
+            --modal-overlay: rgba(0,0,0,0.5);
+            --badge-bg: #F2F2F7;
+            --blue-card-bg: linear-gradient(135deg, #007AFF, #0055B3);
+            
+            /* 日间模式底栏背景 */
+            --nav-bg: #454545;
+            --nav-item-bg: rgba(0, 0, 0, 0.25); 
+            --nav-text-normal: rgba(255, 255, 255, 0.5);
+            --nav-text-active: #FFFFFF;
+            --nav-bg-active: rgba(255, 255, 255, 0.15);
+            
+            /* 图标点击背景 */
+            --icon-btn-active: rgba(0,0,0,0.05);
+            
+            /* 🔥 核心修复：定义日间图标颜色 (深灰) */
+            --icon-color: #1C1C1E;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                /* 夜间模式 */
+                --app-bg: #000000;       
+                --card-bg: #1C1C1E;      
+                --text-main: #FFFFFF;    
+                --text-sub: #98989D;     
+                --border-color: #38383A; 
+                --input-bg: #2C2C2E;     
+                --input-border: #3A3A3C;
+                --modal-overlay: rgba(0,0,0,0.8);
+                --badge-bg: #2C2C2E;
+                --blue-card-bg: linear-gradient(135deg, #00509E, #003366);
+
+                /* 深色模式底栏 */
+                --nav-bg: rgba(118, 118, 128, 0.24);
+                --nav-item-bg: rgba(0, 0, 0, 0.2); 
+                --nav-text-normal: rgba(255, 255, 255, 0.5);
+                --nav-text-active: #FFFFFF;
+                --nav-bg-active: rgba(255, 255, 255, 0.15);
+                
+                --icon-btn-active: rgba(255,255,255,0.1);
+
+                /* 🔥 核心修复：定义夜间图标颜色 (柔和的浅灰，避免刺眼且保证可见) */
+                --icon-color: #A0A0A0;
+            }
+        }
+        
+        html, body { overflow-x: hidden; width: 100%; }
+
+        body { 
+            background-color: var(--app-bg); 
+            color: var(--text-main);
+            font-family: -apple-system, "SF Pro Display", "Microsoft YaHei", sans-serif; 
+            padding-top: env(safe-area-inset-top); 
+            padding-bottom: calc(80px + env(safe-area-inset-bottom));
+            overscroll-behavior-y: none;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        [v-cloak] { display: none; }
+        
+        /* 底部导航栏 */
+        .bottom-nav { 
+            position: fixed; bottom: 0; left: 0; right: 0; 
+            height: calc(65px + env(safe-area-inset-bottom));
+            padding-bottom: env(safe-area-inset-bottom);
+            background: var(--nav-bg); 
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-top: none;
+            box-shadow: 0 -2px 15px rgba(0,0,0,0.1);
+            display: flex; justify-content: center; align-items: center; 
+            z-index: 1000; transition: background-color 0.3s;
+        }
+        
+        .nav-tabs-c { background: var(--nav-item-bg); padding: 4px; border-radius: 50px; display: flex; }
+        .nav-item-c { color: var(--nav-text-normal); padding: 6px 24px; border-radius: 50px; cursor: pointer; text-decoration: none; font-weight: 600; font-size: 0.95rem; transition: 0.3s; user-select: none; }
+        .nav-item-c.active { background: var(--nav-bg-active); color: var(--nav-text-active); }
+
+        .big-title {
+            font-size: 34px; font-weight: 800; color: var(--text-main);
+            margin-top: 20px; margin-bottom: 20px; letter-spacing: -0.02em; padding-left: 5px;
+        }
+        .page-header { margin-top: 20px; margin-bottom: 20px; }
+
+        .scale-container {
+            max-width: 800px; margin: 0 auto; padding: 20px; min-height: 80vh;
+            transform-origin: top center;
+        }
+        @media (max-width: 768px) {
+            .scale-container { transform: scale(0.96); padding-top: 10px; }
+        }
+
+        .apple-card { background: var(--card-bg); border-radius: 18px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); color: var(--text-main); transition: background-color 0.3s; }
+        .hl-card { border-radius: 18px; color: #fff; padding: 20px; height: 130px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.3s ease; }
+        
+        .status-bar-card { border-radius: 18px; padding: 15px 20px; color: #fff; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); transition: all 0.3s ease; }
+        .status-label { font-weight: 600; opacity: 0.9; font-size: 1rem; }
+        .status-value { font-weight: 800; font-size: 1.2rem; display: flex; align-items: center; }
+        .blink-dot { width: 10px; height: 10px; border-radius: 50%; background: #fff; margin-right: 8px; animation: blink 1.5s infinite; }
+        @keyframes blink { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+
+        .hl-num { font-size: 2.2rem; font-weight: 800; line-height: 1; }
+        .bg-dark-g { background: linear-gradient(135deg, #2C2C2E, #1C1C1E); }
+        .bg-green-g { background: linear-gradient(135deg, #34C759, #248A3D); }
+        .bg-gray-g { background: linear-gradient(135deg, #8E8E93, #636366); }
+        .bg-blue-g { background: var(--blue-card-bg); }
+        
+        .list-row { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
+        .rank-container { max-height: 60vh; overflow-y: auto; padding-right: 5px; }
+        .rank-container::-webkit-scrollbar { width: 4px; }
+        .rank-container::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+
+        .accordion-item { border: 1px solid var(--border-color); border-radius: 12px !important; margin-bottom: 12px; background: var(--card-bg); overflow: hidden; }
+        .accordion-header { padding: 15px 20px; background: var(--card-bg); cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; }
+        .accordion-header:hover { background: rgba(128,128,128,0.05); }
+        .accordion-header .date { font-weight: bold; font-size: 1.05rem; color: var(--text-main); }
+        .accordion-header .summary { color: #007AFF; font-weight: 700; font-size: 1.1rem; }
+        .accordion-body { background: var(--app-bg); padding: 15px 20px; border-top: 1px solid var(--border-color); animation: slideIn 0.2s ease-out; position: relative; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .detail-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; color: var(--text-sub); }
+        .text-dark-adaptive { color: #000; }
+        @media (prefers-color-scheme: dark) { .text-dark-adaptive { color: #FFF; } }
+
+        .arrow { transition: transform 0.3s; font-size: 12px; color: var(--text-sub); margin-left: 10px; display: inline-block; }
+        .arrow.rotated { transform: rotate(180deg); }
+
+        .btn-action { cursor: pointer; padding: 4px 8px; border-radius: 6px; transition: 0.2s; border: none; background: transparent; }
+        .btn-action:hover { background: rgba(128,128,128,0.1); }
+        .text-edit { color: #007AFF; }
+
+        .custom-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--modal-overlay); z-index: 9999; display: flex; justify-content: center; align-items: center; }
+        .custom-modal { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; width: 90%; max-width: 400px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: popIn 0.2s ease-out; color: var(--text-main); }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+
+        .form-control { background-color: var(--input-bg); border-color: var(--input-border); color: var(--text-main); }
+        .form-control:focus { background-color: var(--input-bg); color: var(--text-main); border-color: #007AFF; box-shadow: 0 0 0 0.2rem rgba(0,122,255,0.25); }
+        .form-control:disabled { background-color: rgba(128,128,128,0.1); color: var(--text-sub); }
+        input::placeholder { color: var(--text-sub) !important; opacity: 0.7; }
+
+        .icon-btn { width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background-color 0.2s, transform 0.1s; user-select: none; }
+        .icon-btn:active { transform: scale(0.92); background-color: var(--icon-btn-active); }
+        
+        /* 🔥 核心修复：图标颜色引用新变量 */
+        ion-icon { 
+            font-size: 24px; 
+            color: var(--icon-color); /* 引用专用图标颜色变量 */
+            --ionicon-stroke-width: 40px; 
+        }
+        
+        .date-range-badge { font-size: 0.75rem; color: var(--text-sub); background: var(--badge-bg); padding: 2px 8px; border-radius: 6px; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; }
+
+        .fade-slide-enter-active, .fade-slide-leave-active { transition: opacity 0.2s, transform 0.2s; }
+        .fade-slide-enter-from { opacity: 0; transform: translateX(5px); }
+        .fade-slide-leave-to { opacity: 0; transform: translateX(-5px); display: none; }
+
+        .table { --bs-table-bg: transparent; color: var(--text-main); }
+        .table-borderless td, .table-borderless th { border: none; }
+        .border-bottom { border-bottom: 1px solid var(--border-color) !important; }
+        
+        th { white-space: nowrap; color: var(--text-sub); font-weight: 600; }
+        /* 深色模式下，表头强制白色 */
+        @media (prefers-color-scheme: dark) {
+            th { color: var(--text-main) !important; }
+        }
+        
+        .text-muted { color: var(--text-sub) !important; }
+        .fw-bold { color: var(--text-main) !important; }
+        .text-primary { color: #007AFF !important; }
+        @media (prefers-color-scheme: dark) { .text-primary { color: #0A84FF !important; } }
+    </style>
+</head>
+<body>
+
+<div id="app" v-cloak @touchstart="touchStart" @touchend="touchEnd">
+    
+    <div class="custom-modal-overlay" v-if="editModal.show">
+        <div class="custom-modal">
+            <h5 class="fw-bold mb-3">修正历史数据</h5>
+            <div class="mb-3">
+                <label class="form-label text-muted small">日期</label>
+                <input class="form-control" v-model="editModal.data.field1" disabled>
+            </div>
+            <div class="mb-4">
+                <label class="form-label text-muted small">总收益</label>
+                <input type="number" class="form-control" v-model.number="editModal.data.field2">
+            </div>
+            <div class="mb-4">
+                <label class="form-label text-muted small">参与账号数量</label>
+                <input type="number" class="form-control" v-model.number="editModal.data.field3">
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+                <button class="btn btn-secondary rounded-pill px-4" @click="closeModal">取消</button>
+                <button class="btn btn-primary rounded-pill px-4" @click="saveEdit">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="scale-container">
+        <transition name="fade-slide">
+            <div v-show="curPage===1">
+                <div class="page-header">
+                    <h1 class="big-title">Today</h1>
+                </div>
+                
+                <div class="status-bar-card" :class="stats.client_status === '在线' ? 'bg-green-g' : 'bg-gray-g'">
+                    <div class="status-label">客户端运行状态</div>
+                    <div class="status-value">
+                        <div class="blink-dot" v-if="stats.client_status === '在线'"></div>
+                        {{ stats.client_status }}
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-6">
+                        <div class="hl-card bg-dark-g">
+                            <small class="opacity-75">账号数量</small>
+                            <div class="hl-num">{{ stats.total_users || 0 }}</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="hl-card bg-blue-g">
+                            <small class="opacity-75">本轮累计</small>
+                            <div class="hl-num">{{ stats.total_wins || 0 }}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="apple-card">
+                    <div class="d-flex align-items-center mb-3">
+                        <h5 class="fw-bold m-0 me-2">收益排行</h5>
+                        <div class="icon-btn" @click="hideNicknames = !hideNicknames" title="隐私模式">
+                            <ion-icon :name="hideNicknames ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
+                        </div>
+                        <span class="date-range-badge ms-auto" v-if="stats.date_range">{{ stats.date_range }}</span>
+                    </div>
+                    <div class="rank-container">
+                        <div v-for="(user, i) in stats.rank_list" :key="i" class="list-row">
+                            <div class="d-flex align-items-center flex-grow-1" style="min-width: 0;">
+                                <div class="fw-bold text-truncate pe-2">
+                                    {{ hideNicknames ? '***' : user.nickname }}
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <span class="text-muted small me-3" style="font-weight: 500;">{{ user.win_times }} 次</span>
+                                <span class="text-primary fw-bold" style="font-size: 1.1rem; min-width: 40px; text-align: right;">{{ user.win_sum }}</span>
+                            </div>
+                        </div>
+                        <div v-if="stats.rank_list.length===0" class="text-center text-muted py-3">暂无数据</div>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+        <transition name="fade-slide">
+            <div v-show="curPage===2">
+                <div class="page-header">
+                    <h1 class="big-title">日志明细</h1>
+                </div>
+                
+                <div class="apple-card">
+                    <input class="form-control mb-3" placeholder="搜索..." v-model="searchText">
+                    <div style="max-height: 70vh; overflow-y: auto;">
+                        <table class="table table-borderless align-middle">
+                            <thead class="small border-bottom">
+                                <tr>
+                                    <th style="padding-bottom: 10px;">
+                                        <div class="d-flex align-items-center">
+                                            <span>用户 / 时间</span>
+                                            <div class="icon-btn ms-1" @click="hideNicknames = !hideNicknames" title="隐私模式">
+                                                <ion-icon :name="hideNicknames ? 'eye-off-outline' : 'eye-outline'" style="font-size: 20px;"></ion-icon>
+                                            </div>
+                                        </div>
+                                    </th>
+                                    <th class="text-end" style="padding-bottom: 10px;">数量</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="item in filteredDetails" class="border-bottom">
+                                    <td class="py-3">
+                                        <div class="fw-bold text-truncate" style="max-width: 220px; font-size: 1rem;">
+                                            {{ hideNicknames ? '***' : item.nickname }}
+                                        </div>
+                                        <div class="text-muted small" style="font-size: 0.8rem; margin-top: 4px;">
+                                            {{ item.log_time }}
+                                        </div>
+                                    </td>
+                                    
+                                    <td class="text-end py-3 align-middle">
+                                        <span class="text-primary fw-bold" style="font-size: 1.5rem; letter-spacing: -0.5px;">
+                                            {{ item.quantity }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+        <transition name="fade-slide">
+            <div v-show="curPage===3">
+                <div class="d-flex justify-content-between align-items-center page-header px-2">
+                    <h1 class="big-title">历史记录</h1>
+                    <div class="d-flex align-items-center gap-1">
+                        <div class="icon-btn" @click="hideHistory = !hideHistory" title="隐私开关">
+                            <ion-icon :name="hideHistory ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
+                        </div>
+                        <div class="icon-btn" @click="handleHistoryEdit" title="修改展开项">
+                            <ion-icon name="create-outline"></ion-icon>
+                        </div>
+                    </div>
+                </div>
+                
+                <div v-if="!stats.history_data || stats.history_data.length===0" class="text-center text-muted py-5">
+                    暂无历史数据
+                </div>
+                <div class="accordion-item" v-for="day in stats.history_data" :key="day.date">
+                    <div class="accordion-header" @click="toggleDate(day.date)">
+                        <div class="d-flex align-items-center">
+                            <span class="date">{{ day.date }}</span>
+                            <span class="badge bg-warning text-dark ms-2" v-if="day.is_manual">已修正</span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <span class="summary text-primary me-2">
+                                {{ (hideHistory && !expandedDates[day.date]) ? '**' : ('+' + day.daily_sum) }}
+                            </span>
+                            <span class="arrow" :class="{ rotated: expandedDates[day.date] }">▼</span>
+                        </div>
+                    </div>
+                    <div class="accordion-body" v-if="expandedDates[day.date]">
+                        <div class="detail-row">
+                            <span>👥 参与账号数量</span>
+                            <span class="fw-bold text-dark-adaptive">{{ day.user_count }}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>💰 当日总收益</span>
+                            <span class="fw-bold text-dark-adaptive">{{ day.daily_sum }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </transition>
+    </div>
+
+    <nav class="bottom-nav">
+        <div class="nav-tabs-c">
+            <a class="nav-item-c" :class="{active: curPage===1}" @click="curPage=1">总览</a>
+            <a class="nav-item-c" :class="{active: curPage===2}" @click="curPage=2">明细</a>
+            <a class="nav-item-c" :class="{active: curPage===3}" @click="curPage=3">历史</a>
+        </div>
+    </nav>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+<script>
+    const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW fail:', err));
+        });
+    }
+
+    createApp({
+        setup() {
+            const curPage = ref(1);
+            const expandedDates = ref({}); 
+            const stats = ref({ client_status: "离线", total_users: 0, total_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" });
+            const searchText = ref("");
+            const editModal = ref({ show: false, type: 'history', data: { field1: '', field2: 0, field3: 0 } });
+            const hideNicknames = ref(false);
+            const hideHistory = ref(false);
+
+            let touchStartX = 0;
+            let touchStartY = 0;
+
+            const loadData = async () => {
+                try {
+                    const res = await axios.get('/api/stats');
+                    stats.value = res.data;
+                } catch(e) { console.error(e); }
+            };
+
+            const filteredDetails = computed(() => {
+                if(!stats.value.details) return [];
+                const search = searchText.value.replace(/\s+/g, '');
+                return stats.value.details.filter(i => {
+                    const cleanNick = i.nickname.replace(/\s+/g, '');
+                    return cleanNick.includes(search) || i.log_time.includes(searchText.value);
+                });
+            });
+
+            const toggleDate = (date) => { expandedDates.value[date] = !expandedDates.value[date]; };
+
+            const openEditLog = (item) => {};
+
+            const handleHistoryEdit = () => {
+                const openedDates = Object.keys(expandedDates.value).filter(d => expandedDates.value[d]);
+                if (openedDates.length === 0) {
+                    alert("当前无数据展开");
+                    return;
+                }
+                if (openedDates.length > 1) {
+                    alert("请只展开一项需修改的数据");
+                    return;
+                }
+                
+                const targetDate = openedDates[0];
+                const dayData = stats.value.history_data.find(d => d.date === targetDate);
+                if (dayData) {
+                    editModal.value.type = 'history';
+                    editModal.value.data = { field1: dayData.date, field2: dayData.daily_sum, field3: dayData.user_count };
+                    editModal.value.show = true;
+                }
+            };
+
+            const closeModal = () => { editModal.value.show = false; };
+
+            const saveEdit = async () => {
+                try {
+                    await axios.post('/api/update_history', {
+                        date: editModal.value.data.field1,
+                        manual_sum: editModal.value.data.field2,
+                        manual_users: editModal.value.data.field3
+                    });
+                    editModal.value.show = false;
+                    loadData();
+                } catch(e) { alert("保存失败"); }
+            };
+
+            const handleTouchStart = (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+                touchStartY = e.changedTouches[0].screenY;
+            };
+
+            const handleTouchEnd = (e) => {
+                const endX = e.changedTouches[0].screenX;
+                const endY = e.changedTouches[0].screenY;
+                const diffX = touchStartX - endX;
+                const diffY = touchStartY - endY;
+
+                if (Math.abs(diffX) > Math.abs(diffY)) {
+                    if (diffX > 40) {
+                        if (curPage.value < 3) curPage.value++;
+                    } else if (diffX < -40) {
+                        if (curPage.value > 1) curPage.value--;
+                    }
+                }
+            };
+
+            onMounted(() => {
+                editModal.value.show = false;
+                loadData();
+                setInterval(loadData, 2000);
+                window.addEventListener('touchstart', handleTouchStart);
+                window.addEventListener('touchend', handleTouchEnd);
+            });
+
+            onUnmounted(() => {
+                window.removeEventListener('touchstart', handleTouchStart);
+                window.removeEventListener('touchend', handleTouchEnd);
+            });
+
+            return { 
+                curPage, stats, searchText, filteredDetails, expandedDates, toggleDate,
+                editModal, closeModal, saveEdit,
+                hideNicknames, hideHistory, handleHistoryEdit
+            };
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
