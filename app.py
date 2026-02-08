@@ -12,57 +12,58 @@ app.jinja_env.variable_start_string = '[['
 app.jinja_env.variable_end_string = ']]'
 
 DB_PATH = '/app/data/lottery.db'
-LAST_HEARTBEAT = 0 
+# 🔥 改为字典，存储 { "client_id": timestamp }
+LAST_HEARTBEATS = {} 
 
-# 月份映射表
 MONTH_MAP = {
     'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
     'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
 }
 
 def parse_log_date(date_str):
-    """
-    万能日期解析函数
-    支持: 
-    - 06/Feb/2026 23:51:08
-    - 2026-02-06 23:51:08
-    - 2026/02/06 23:51:08
-    """
     try:
         date_str = date_str.strip()
-        # 尝试格式 1: 06/Feb/2026 23:51:08
         if '/' in date_str and re.search(r'[a-zA-Z]', date_str):
             parts = date_str.split()
             d_parts = parts[0].split('/')
             t_parts = parts[1].split(':')
-            day = int(d_parts[0])
-            month = MONTH_MAP.get(d_parts[1], 0)
-            year = int(d_parts[2])
-            return datetime(year, month, day, int(t_parts[0]), int(t_parts[1]), int(t_parts[2]))
-        
-        # 尝试格式 2: 2026-02-06 23:51:08 (标准 ISO)
-        if '-' in date_str:
-            return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
-            
-        # 尝试格式 3: 2026/02/06 23:51:08
-        if '/' in date_str:
-            return datetime.strptime(date_str, "%Y/%m/%d %H:%M:%S")
-
-        # 尝试格式 4: 2026.02.06 23:51:08
-        if '.' in date_str:
-            return datetime.strptime(date_str, "%Y.%m.%d %H:%M:%S")
-
+            return datetime(int(d_parts[2]), MONTH_MAP.get(d_parts[1], 0), int(d_parts[0]), int(t_parts[0]), int(t_parts[1]), int(t_parts[2]))
+        if '-' in date_str: return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+        if '/' in date_str: return datetime.strptime(date_str, "%Y/%m/%d %H:%M:%S")
+        if '.' in date_str: return datetime.strptime(date_str, "%Y.%m.%d %H:%M:%S")
         return None
-    except Exception as e:
-        print(f"[Date Parse Fail] '{date_str}': {e}", flush=True)
-        return None
+    except: return None
 
 def init_db():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY AUTOINCREMENT, log_time TEXT, nickname TEXT, item_type TEXT, quantity INTEGER, unique_sign TEXT UNIQUE)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS daily_overrides (date TEXT PRIMARY KEY, manual_users INTEGER, manual_sum INTEGER)''')
+    
+    # 🔥 1. 创建 logs 表 (带 client_id)
+    c.execute('''CREATE TABLE IF NOT EXISTS logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, 
+        log_time TEXT, 
+        nickname TEXT, 
+        item_type TEXT, 
+        quantity INTEGER, 
+        unique_sign TEXT UNIQUE,
+        client_id TEXT
+    )''')
+    
+    # 🔥 2. 尝试添加 client_id 列 (兼容旧数据库)
+    try:
+        c.execute("ALTER TABLE logs ADD COLUMN client_id TEXT")
+    except: pass
+
+    # 🔥 3. 创建历史修正表 (联合主键: date + client_id)
+    c.execute('''CREATE TABLE IF NOT EXISTS daily_overrides (
+        date TEXT, 
+        client_id TEXT,
+        manual_users INTEGER, 
+        manual_sum INTEGER,
+        PRIMARY KEY (date, client_id)
+    )''')
+    
     conn.commit()
     conn.close()
 
@@ -70,20 +71,35 @@ init_db()
 
 @app.route('/manifest.json')
 def serve_manifest(): return send_from_directory('static', 'manifest.json', mimetype='application/json')
-
 @app.route('/sw.js')
 def serve_sw(): return send_from_directory('static', 'sw.js', mimetype='application/javascript')
-
 @app.route('/static/<path:path>')
 def send_static(path): return send_from_directory('static', path)
-
 @app.route('/')
 def dashboard(): return render_template('dashboard.html')
 
+# 🔥 获取节点列表接口
+@app.route('/api/nodes')
+def get_nodes():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    # 获取所有有数据的节点
+    c.execute("SELECT DISTINCT client_id FROM logs WHERE client_id IS NOT NULL AND client_id != ''")
+    nodes = [row[0] for row in c.fetchall()]
+    conn.close()
+    
+    # 加上当前在线但可能还没数据的节点
+    for node in LAST_HEARTBEATS.keys():
+        if node not in nodes: nodes.append(node)
+    
+    return jsonify({"nodes": sorted(nodes)})
+
 @app.route('/api/heartbeat', methods=['POST'])
 def heartbeat():
-    global LAST_HEARTBEAT
-    LAST_HEARTBEAT = time.time()
+    data = request.json
+    client_id = data.get('client_id', 'Unknown')
+    # 🔥 记录具体节点的最后在线时间
+    LAST_HEARTBEATS[client_id] = time.time()
     return jsonify({"status": "ok"})
 
 @app.route('/api/health', methods=['GET'])
@@ -92,20 +108,11 @@ def health_check(): return jsonify({"status": "online", "server": "LittlePilot"}
 @app.route('/api/update_history', methods=['POST'])
 def update_history():
     data = request.json
+    client_id = data.get('client_id', 'Unknown')
     conn = sqlite3.connect(DB_PATH)
     try:
-        conn.execute("REPLACE INTO daily_overrides (date, manual_users, manual_sum) VALUES (?, ?, ?)", (data.get('date'), data.get('manual_users'), data.get('manual_sum')))
-        conn.commit()
-        return jsonify({"status": "success"})
-    except Exception as e: return jsonify({"status": "error", "msg": str(e)}), 500
-    finally: conn.close()
-
-@app.route('/api/update_log', methods=['POST'])
-def update_log():
-    data = request.json
-    conn = sqlite3.connect(DB_PATH)
-    try:
-        conn.execute("UPDATE logs SET nickname = ?, quantity = ? WHERE id = ?", (data.get('nickname'), data.get('quantity'), data.get('id')))
+        conn.execute("REPLACE INTO daily_overrides (date, client_id, manual_users, manual_sum) VALUES (?, ?, ?, ?)", 
+                     (data.get('date'), client_id, data.get('manual_users'), data.get('manual_sum')))
         conn.commit()
         return jsonify({"status": "success"})
     except Exception as e: return jsonify({"status": "error", "msg": str(e)}), 500
@@ -115,6 +122,9 @@ def update_log():
 def upload_file():
     sys.stdout.flush()
     file = request.files.get('file')
+    # 🔥 获取客户端上传的 ID
+    client_id = request.form.get('client_id', 'Unknown')
+    
     if not file: return jsonify({"status": "error"}), 400
     raw_data = file.read()
     try: content = raw_data.decode('gb18030')
@@ -124,36 +134,50 @@ def upload_file():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     new_count = 0
-    # 宽松正则
     pattern = r"\[(.*?)\]\s+(.*?)_\d+\s+\|.*?[,，]\s*(?:.*?)[,，]\s*(\d+)"
+    
     for line in lines:
         line = line.strip()
         if not line: continue 
         match = re.search(pattern, line)
         if match:
-            log_time = match.group(1)
-            nickname = match.group(2)
-            quantity = int(match.group(3))
-            unique_sign = f"{log_time}_{nickname}_{quantity}"
+            log_time, nickname, quantity = match.group(1), match.group(2), int(match.group(3))
+            unique_sign = f"{log_time}_{nickname}_{quantity}_{client_id}" # 🔥 唯一标识加入 client_id 防止冲突
             try:
-                c.execute("INSERT INTO logs (log_time, nickname, item_type, quantity, unique_sign) VALUES (?, ?, ?, ?, ?)", (log_time, nickname, "钻石", quantity, unique_sign))
+                c.execute("INSERT INTO logs (log_time, nickname, item_type, quantity, unique_sign, client_id) VALUES (?, ?, ?, ?, ?, ?)", 
+                          (log_time, nickname, "钻石", quantity, unique_sign, client_id))
                 new_count += 1
             except sqlite3.IntegrityError: pass 
     conn.commit()
     conn.close()
+    
+    # 顺便更新一下心跳
+    LAST_HEARTBEATS[client_id] = time.time()
+    
     return jsonify({"status": "success", "new_entries": new_count})
 
 @app.route('/api/stats')
 def get_stats():
+    # 🔥 获取前端选择的节点
+    target_node = request.args.get('node')
+    
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
     
     try:
-        is_online = (time.time() - LAST_HEARTBEAT) < 10
+        # 状态判断
+        last_seen = LAST_HEARTBEATS.get(target_node, 0)
+        is_online = (time.time() - last_seen) < 15 and target_node is not None
 
-        # --- A. 总览页数据 ---
-        c.execute("SELECT id, log_time, nickname, quantity FROM logs")
+        # --- A. 总览页数据 (带 filter) ---
+        query = "SELECT id, log_time, nickname, quantity FROM logs"
+        params = []
+        if target_node:
+            query += " WHERE client_id = ?"
+            params.append(target_node)
+            
+        c.execute(query, params)
         all_raw_logs = [dict(row) for row in c.fetchall()]
 
         now = datetime.now()
@@ -161,14 +185,9 @@ def get_stats():
         
         overview_logs = []
         for log in all_raw_logs:
-            # 使用万能解析
             log_dt = parse_log_date(log['log_time'])
             if log_dt and log_dt >= cutoff_time:
-                overview_logs.append({
-                    "nickname": log['nickname'],
-                    "quantity": log['quantity'],
-                    "log_dt": log_dt
-                })
+                overview_logs.append({ "nickname": log['nickname'], "quantity": log['quantity'], "log_dt": log_dt })
 
         total_users = len(set(l['nickname'] for l in overview_logs))
         total_wins = sum(l['quantity'] for l in overview_logs)
@@ -185,17 +204,21 @@ def get_stats():
         date_range_str = ""
         if overview_logs:
             overview_logs.sort(key=lambda x: x['log_dt'])
-            # 格式化日期显示为 2026.02.06
             s_str = overview_logs[0]['log_dt'].strftime("%Y.%m.%d")
             e_str = overview_logs[-1]['log_dt'].strftime("%Y.%m.%d")
             date_range_str = s_str if s_str == e_str else f"{s_str} - {e_str}"
         else:
-            # 🔥 修改文案
             date_range_str = "暂无数据"
 
-        # --- B. 明细页数据 (🔥 增加 48h 过滤) ---
-        # 预取更多数据，然后在内存中过滤
-        c.execute("SELECT id, log_time, nickname, item_type, quantity FROM logs ORDER BY id DESC LIMIT 5000")
+        # --- B. 明细页数据 (带 filter) ---
+        query_det = "SELECT id, log_time, nickname, item_type, quantity FROM logs"
+        params_det = []
+        if target_node:
+            query_det += " WHERE client_id = ?"
+            params_det.append(target_node)
+        query_det += " ORDER BY id DESC LIMIT 5000"
+        
+        c.execute(query_det, params_det)
         raw_details = [dict(row) for row in c.fetchall()]
         details = []
         for log in raw_details:
@@ -203,22 +226,29 @@ def get_stats():
             if log_dt and log_dt >= cutoff_time:
                 details.append(log)
 
-        # --- C. 历史页数据 ---
-        # 截取前10位作为日期分组 (例如 '06/Feb/2026' 或 '2026-02-06')
-        c.execute('''
+        # --- C. 历史页数据 (带 filter & 联表查询) ---
+        # 这里的 SQL 需要关联 client_id
+        hist_sql = '''
             SELECT substr(l.log_time, 1, 10) as date_str, COUNT(DISTINCT l.nickname) as calc_users, SUM(l.quantity) as calc_sum, d.manual_users, d.manual_sum
-            FROM logs l LEFT JOIN daily_overrides d ON substr(l.log_time, 1, 10) = d.date GROUP BY date_str 
-        ''')
+            FROM logs l 
+            LEFT JOIN daily_overrides d ON substr(l.log_time, 1, 10) = d.date AND d.client_id = l.client_id
+            WHERE 1=1
+        '''
+        hist_params = []
+        if target_node:
+            hist_sql += " AND l.client_id = ?"
+            hist_params.append(target_node)
+            
+        hist_sql += " GROUP BY date_str"
+        
+        c.execute(hist_sql, hist_params)
         raw_history = c.fetchall()
         history_list = []
         for row in raw_history:
             final_users = row['manual_users'] if row['manual_users'] is not None else row['calc_users']
             final_sum = row['manual_sum'] if row['manual_sum'] is not None else row['calc_sum']
-            
-            # 排序解析
             dt = parse_log_date(row['date_str'] + " 00:00:00")
             sort_key = dt if dt else datetime.min
-
             history_list.append({
                 "date": row['date_str'],
                 "user_count": final_users,
@@ -226,8 +256,6 @@ def get_stats():
                 "is_manual": row['manual_users'] is not None,
                 "sort_key": sort_key
             })
-        
-        # 倒序排列，最新的在最上面
         history_list.sort(key=lambda x: x['sort_key'], reverse=True)
 
     except Exception as e:
