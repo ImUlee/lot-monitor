@@ -115,10 +115,10 @@
         .del-btn:hover { background: rgba(255, 59, 48, 0.1); }
         .del-btn:active { transform: scale(0.9); }
         
-        /* 🔥 修改样式：缩小下拉框宽度 */
         .search-type-select { width: 75px !important; border-top-right-radius: 0; border-bottom-right-radius: 0; background-color: var(--input-bg); border-color: var(--input-border); color: var(--text-main); padding-right: 0; }
         .search-input-group input { border-top-left-radius: 0; border-bottom-left-radius: 0; }
         .checkbox-wrapper { display: flex; align-items: center; margin-bottom: 12px; margin-left: 5px; }
+        .checkbox-wrapper .form-check-input { margin-top: 0; }
         .log-modal-body { flex: 1; overflow-y: auto; padding: 0 10px; }
     </style>
 </head>
@@ -221,6 +221,9 @@
                 <div class="checkbox-wrapper">
                     <input class="form-check-input me-2" type="checkbox" id="filterSmall" v-model="filterSmallPacks">
                     <label class="form-check-label text-muted small" for="filterSmall">过滤小包 (&lt;24)</label>
+                    <span class="ms-3 text-primary fw-bold" style="font-size: 0.9rem;" v-if="filterSmallPacks">
+                        大包总计数量：{{ filteredTotal }}
+                    </span>
                 </div>
                 <div style="max-height: 65vh; overflow-y: auto;">
                     <table class="table table-borderless align-middle">
@@ -429,9 +432,7 @@
                 const rawSearch = searchText.value.trim();
                 
                 return stats.value.details.filter(i => {
-                    // 1. 小包过滤
                     if (filterSmallPacks.value && i.quantity < 24) return false;
-                    // 2. 空搜索直接通过
                     if (!rawSearch) return true;
 
                     if (searchType.value === 'nick') {
@@ -439,13 +440,16 @@
                         const cleanSearch = rawSearch.replace(/\s+/g, '');
                         return cleanNick.includes(cleanSearch);
                     } else {
-                        // 日期智能匹配：剔除所有非数字
-                        // 日志时间只取前10位 (YYYY-MM-DD)，避免匹配到时间
                         const logDate = i.log_time.substring(0, 10).replace(/\D/g, ''); 
                         const searchDate = rawSearch.replace(/\D/g, '');
                         return logDate.includes(searchDate);
                     }
                 });
+            });
+
+            // 🔥 计算大包总数
+            const filteredTotal = computed(() => {
+                return filteredDetails.value.reduce((sum, item) => sum + item.quantity, 0);
             });
 
             const toggleDate = (date) => { expandedDates.value[date] = !expandedDates.value[date]; };
@@ -488,7 +492,7 @@
 
             return { 
                 curPage, changeTab, stats, 
-                searchText, searchType, filterSmallPacks, filteredDetails, 
+                searchText, searchType, filterSmallPacks, filteredDetails, filteredTotal,
                 expandedDates, toggleDate,
                 editModal, authModal, historyLogsModal, viewHistoryLogs,
                 closeModal, saveEdit, confirmPassword,
