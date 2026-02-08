@@ -37,7 +37,7 @@ def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
-    # 1. 核心日志表 (存储数据) - device_id 为外键关联
+    # 1. 日志数据表
     c.execute('''CREATE TABLE IF NOT EXISTS logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         log_time TEXT, 
@@ -48,7 +48,7 @@ def init_db():
         device_id TEXT
     )''')
     
-    # 2. 设备状态表 (存储元数据) - device_id 为主键
+    # 2. 设备状态表 (device_id为主键，确保昵称实时更新)
     c.execute('''CREATE TABLE IF NOT EXISTS devices (
         device_id TEXT PRIMARY KEY,
         nickname TEXT,
@@ -56,7 +56,7 @@ def init_db():
         process_running INTEGER
     )''')
 
-    # 3. 历史修正表 (date + device_id 联合主键)
+    # 3. 历史修正表
     c.execute('''CREATE TABLE IF NOT EXISTS daily_overrides (
         date TEXT, 
         device_id TEXT,
@@ -79,7 +79,7 @@ def send_static(path): return send_from_directory('static', path)
 @app.route('/')
 def dashboard(): return render_template('dashboard.html')
 
-# 🔥 获取节点列表 (读 devices 表)
+# 🔥 获取节点列表
 @app.route('/api/nodes')
 def get_nodes():
     conn = sqlite3.connect(DB_PATH)
@@ -90,16 +90,18 @@ def get_nodes():
     nodes = []
     now = time.time()
     for r in rows:
+        # 判断是否在线 (15秒超时)
+        is_online = (now - r['last_seen']) < 15
         nodes.append({
             "device_id": r['device_id'],
             "nickname": r['nickname'],
-            "is_online": (now - r['last_seen']) < 15, # 15秒内有心跳算在线
+            "is_online": is_online,
             "process_running": bool(r['process_running'])
         })
     conn.close()
     return jsonify({"nodes": nodes})
 
-# 🔥 心跳接口：更新 devices 表
+# 🔥 心跳接口
 @app.route('/api/heartbeat', methods=['POST'])
 def heartbeat():
     data = request.json
@@ -111,6 +113,7 @@ def heartbeat():
     
     conn = sqlite3.connect(DB_PATH)
     try:
+        # REPLACE INTO 会根据 device_id 更新昵称和状态
         conn.execute("REPLACE INTO devices (device_id, nickname, last_seen, process_running) VALUES (?, ?, ?, ?)", 
                      (device_id, nickname, time.time(), process_running))
         conn.commit()
@@ -138,16 +141,15 @@ def update_history():
 def upload_file():
     sys.stdout.flush()
     file = request.files.get('file')
-    # 🔥 获取 device_id
     device_id = request.form.get('device_id')
-    nickname = request.form.get('nickname', 'Unknown') # 顺便获取昵称用于更新device表
+    nickname = request.form.get('nickname', 'Unknown')
     
     if not file or not device_id: return jsonify({"status": "error"}), 400
     
-    # 顺便更新一次心跳，防止上传大文件时掉线
+    # 上传时也更新在线状态，防止大文件传输导致心跳超时
     conn = sqlite3.connect(DB_PATH)
     conn.execute("REPLACE INTO devices (device_id, nickname, last_seen, process_running) VALUES (?, ?, ?, ?)", 
-                 (device_id, nickname, time.time(), 1)) # 上传通常意味着活着
+                 (device_id, nickname, time.time(), 1))
     
     raw_data = file.read()
     try: content = raw_data.decode('gb18030')
@@ -172,12 +174,10 @@ def upload_file():
             except sqlite3.IntegrityError: pass 
     conn.commit()
     conn.close()
-    
     return jsonify({"status": "success", "new_entries": new_count})
 
 @app.route('/api/stats')
 def get_stats():
-    # 🔥 按 device_id 过滤
     target_node_id = request.args.get('node_id')
     
     conn = sqlite3.connect(DB_PATH)
@@ -185,19 +185,27 @@ def get_stats():
     c = conn.cursor()
     
     try:
-        # 获取目标节点信息，用于显示“客户端运行状态”
+        # 🔥 核心逻辑修正：综合判断在线状态和进程状态
         process_status_text = "未连接"
+        is_client_online = False
+        
         if target_node_id:
-            c.execute("SELECT process_running FROM devices WHERE device_id = ?", (target_node_id,))
+            c.execute("SELECT last_seen, process_running FROM devices WHERE device_id = ?", (target_node_id,))
             row = c.fetchone()
             if row:
-                process_status_text = "运行中" if row['process_running'] else "未运行"
+                is_client_online = (time.time() - row['last_seen']) < 15
+                if not is_client_online:
+                    process_status_text = "离线" # 客户端本身不在线
+                elif row['process_running']:
+                    process_status_text = "运行中" # 客户端在线且EXE在跑
+                else:
+                    process_status_text = "未运行" # 客户端在线但EXE没跑
             else:
                 process_status_text = "未知设备"
         else:
             process_status_text = "请选择节点"
 
-        # --- A. 总览页数据 (带 filter) ---
+        # --- A. 总览页数据 ---
         query = "SELECT id, log_time, nickname, quantity FROM logs"
         params = []
         if target_node_id:
@@ -237,7 +245,7 @@ def get_stats():
         else:
             date_range_str = "暂无数据"
 
-        # --- B. 明细页数据 (带 filter) ---
+        # --- B. 明细页数据 ---
         query_det = "SELECT id, log_time, nickname, item_type, quantity FROM logs"
         params_det = []
         if target_node_id:
@@ -253,7 +261,7 @@ def get_stats():
             if log_dt and log_dt >= cutoff_time:
                 details.append(log)
 
-        # --- C. 历史页数据 (带 filter & 联表查询) ---
+        # --- C. 历史页数据 ---
         hist_sql = '''
             SELECT substr(l.log_time, 1, 10) as date_str, COUNT(DISTINCT l.nickname) as calc_users, SUM(l.quantity) as calc_sum, d.manual_users, d.manual_sum
             FROM logs l 
@@ -292,7 +300,7 @@ def get_stats():
     
     conn.close()
     return jsonify({
-        "process_status": process_status_text, # 🔥 返回目标进程状态
+        "process_status": process_status_text, 
         "total_users": total_users,
         "total_wins": total_wins,
         "rank_list": rank_list,
