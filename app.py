@@ -111,10 +111,16 @@ def upload_file():
     file = request.files.get('file')
     device_id = request.form.get('device_id')
     nickname = request.form.get('nickname', 'Unknown')
+    # 🔥 核心修复：接收客户端传来的真实进程状态，而不是写死 1
+    process_status_str = request.form.get('process_running', 'False')
+    process_running = 1 if process_status_str == 'True' else 0
+    
     if not file or not device_id: return jsonify({"status": "error"}), 400
+    
     conn = sqlite3.connect(DB_PATH)
     conn.execute("REPLACE INTO devices (device_id, nickname, last_seen, process_running) VALUES (?, ?, ?, ?)", 
-                 (device_id, nickname, time.time(), 1))
+                 (device_id, nickname, time.time(), process_running))
+    
     raw_data = file.read()
     try: content = raw_data.decode('gb18030')
     except: content = raw_data.decode('utf-8', errors='ignore')
@@ -146,8 +152,8 @@ def get_stats():
     c = conn.cursor()
     
     try:
-        # 🔥 核心修正：程序状态逻辑
         process_status_text = "未连接"
+        is_client_online = False
         
         if target_node_id:
             c.execute("SELECT last_seen, process_running FROM devices WHERE device_id = ?", (target_node_id,))
@@ -155,20 +161,16 @@ def get_stats():
             if row:
                 is_client_online = (time.time() - row['last_seen']) < 15
                 if not is_client_online:
-                    # 客户端离线 -> 程序状态未知/离线
                     process_status_text = "离线" 
                 elif row['process_running']:
-                    # 客户端在线 + 进程在跑 -> 运行中
-                    process_status_text = "运行中" 
+                    process_status_text = "运行中"
                 else:
-                    # 客户端在线 + 进程没跑 -> 未运行
-                    process_status_text = "未运行" 
+                    process_status_text = "未运行"
             else:
                 process_status_text = "未知设备"
         else:
             process_status_text = "请选择节点"
 
-        # --- A. 总览页数据 ---
         query = "SELECT id, log_time, nickname, quantity FROM logs"
         params = []
         if target_node_id:
@@ -205,7 +207,6 @@ def get_stats():
             e_str = overview_logs[-1]['log_dt'].strftime("%Y.%m.%d")
             date_range_str = s_str if s_str == e_str else f"{s_str} - {e_str}"
 
-        # --- B. 明细页数据 ---
         query_det = "SELECT id, log_time, nickname, item_type, quantity FROM logs"
         params_det = []
         if target_node_id:
@@ -220,7 +221,6 @@ def get_stats():
             if log_dt and log_dt >= cutoff_time:
                 details.append(log)
 
-        # --- C. 历史页数据 ---
         hist_sql = '''SELECT substr(l.log_time, 1, 10) as date_str, COUNT(DISTINCT l.nickname) as calc_users, SUM(l.quantity) as calc_sum, d.manual_users, d.manual_sum FROM logs l LEFT JOIN daily_overrides d ON substr(l.log_time, 1, 10) = d.date AND d.device_id = l.device_id WHERE 1=1'''
         hist_params = []
         if target_node_id:
