@@ -42,7 +42,7 @@
         [v-cloak] { display: none; }
         .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: calc(65px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); background: var(--nav-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: none; box-shadow: 0 -2px 15px rgba(0,0,0,0.1); display: flex; justify-content: center; align-items: center; z-index: 1000; transition: background-color 0.3s; }
         .nav-tabs-c { background: var(--nav-item-bg); padding: 4px; border-radius: 50px; display: flex; }
-        .nav-item-c { color: var(--nav-text-normal); padding: 6px 24px; border-radius: 50px; cursor: pointer; text-decoration: none; font-weight: 600; font-size: 0.95rem; transition: 0.3s; user-select: none; }
+        .nav-item-c { color: var(--nav-text-normal); padding: 6px 20px; border-radius: 50px; cursor: pointer; text-decoration: none; font-weight: 600; font-size: 0.95rem; transition: 0.3s; user-select: none; }
         .nav-item-c.active { background: var(--nav-bg-active); color: var(--nav-text-active); }
         .big-title { font-size: 34px; font-weight: 800; color: var(--text-main); margin: 0; letter-spacing: -0.02em; padding-left: 5px; }
         .page-header { margin-top: 20px; margin-bottom: 20px; display: flex; align-items: center; min-height: 42px; }
@@ -99,13 +99,17 @@
         .text-primary { color: #007AFF !important; }
         @media (prefers-color-scheme: dark) { .text-primary { color: #0A84FF !important; } }
         
-        /* 🔥 节点选择器样式 */
-        .node-select {
-            background: var(--input-bg); color: var(--text-main);
-            border: 1px solid var(--border-color); border-radius: 8px;
-            padding: 6px 12px; font-size: 0.9rem; font-weight: bold;
-            margin-left: auto; max-width: 120px;
+        /* 🔥 节点页样式 */
+        .node-row {
+            display: flex; align-items: center; padding: 16px;
+            background: var(--card-bg); border-radius: 12px; margin-bottom: 10px;
+            border: 2px solid transparent; cursor: pointer; transition: all 0.2s;
         }
+        .node-row:active { transform: scale(0.98); }
+        .node-row.selected { border-color: #007AFF; background: rgba(0,122,255,0.05); }
+        .node-status-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 12px; }
+        .node-status-dot.online { background: #34C759; box-shadow: 0 0 8px rgba(52, 199, 89, 0.5); }
+        .node-status-dot.offline { background: #8E8E93; }
     </style>
 </head>
 <body>
@@ -115,18 +119,9 @@
     <div class="custom-modal-overlay" v-if="editModal.show">
         <div class="custom-modal">
             <h5 class="fw-bold mb-3">修正历史数据</h5>
-            <div class="mb-3">
-                <label class="form-label text-muted small">日期</label>
-                <input class="form-control" v-model="editModal.data.field1" disabled>
-            </div>
-            <div class="mb-4">
-                <label class="form-label text-muted small">总收益</label>
-                <input type="number" class="form-control" v-model.number="editModal.data.field2">
-            </div>
-            <div class="mb-4">
-                <label class="form-label text-muted small">参与账号数量</label>
-                <input type="number" class="form-control" v-model.number="editModal.data.field3">
-            </div>
+            <div class="mb-3"><label class="form-label text-muted small">日期</label><input class="form-control" v-model="editModal.data.field1" disabled></div>
+            <div class="mb-4"><label class="form-label text-muted small">总收益</label><input type="number" class="form-control" v-model.number="editModal.data.field2"></div>
+            <div class="mb-4"><label class="form-label text-muted small">参与账号数量</label><input type="number" class="form-control" v-model.number="editModal.data.field3"></div>
             <div class="d-flex justify-content-end gap-2">
                 <button class="btn btn-secondary rounded-pill px-4" @click="closeModal">取消</button>
                 <button class="btn btn-primary rounded-pill px-4" @click="saveEdit">保存</button>
@@ -135,158 +130,101 @@
     </div>
 
     <div class="scale-container">
-        <div class="d-flex align-items-center mb-2 px-1">
-            <span class="text-muted small me-2">当前节点:</span>
-            <select class="node-select" v-model="curNode" @change="changeNode">
-                <option v-for="n in nodeList" :value="n">{{ n }}</option>
-            </select>
-        </div>
-
-        <transition name="fade-slide">
-            <div v-show="curPage===1">
-                <div class="page-header">
-                    <h1 class="big-title">Today</h1>
-                </div>
-                
-                <div class="status-bar-card" :class="stats.client_status === '在线' ? 'bg-green-g' : 'bg-gray-g'">
-                    <div class="status-label">客户端运行状态</div>
-                    <div class="status-value">
-                        <div class="blink-dot" v-if="stats.client_status === '在线'"></div>
-                        {{ stats.client_status }}
-                    </div>
-                </div>
-
-                <div class="row g-3 mb-4">
-                    <div class="col-6">
-                        <div class="hl-card bg-dark-g">
-                            <small class="opacity-75">账号数量</small>
-                            <div class="hl-num">{{ stats.total_users || 0 }}</div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="hl-card bg-blue-g">
-                            <small class="opacity-75">本轮累计</small>
-                            <div class="hl-num">{{ stats.total_wins || 0 }}</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="apple-card">
-                    <div class="d-flex align-items-center mb-3">
-                        <h5 class="fw-bold m-0 me-2">收益排行</h5>
-                        <div class="icon-btn" @click="hideNicknames = !hideNicknames" title="隐私模式">
-                            <ion-icon :name="hideNicknames ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
-                        </div>
-                        <span class="date-range-badge ms-auto" v-if="stats.date_range">{{ stats.date_range }}</span>
-                    </div>
-                    <div class="rank-container">
-                        <div v-for="(user, i) in stats.rank_list" :key="i" class="list-row">
-                            <div class="d-flex align-items-center flex-grow-1" style="min-width: 0;">
-                                <div class="fw-bold text-truncate pe-2">
-                                    {{ hideNicknames ? '***' : user.nickname }}
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center">
-                                <span class="text-muted small me-3" style="font-weight: 500;">{{ user.win_times }} 次</span>
-                                <span class="text-primary fw-bold" style="font-size: 1.1rem; min-width: 40px; text-align: right;">{{ user.win_sum }}</span>
-                            </div>
-                        </div>
-                        <div v-if="stats.rank_list.length===0" class="text-center text-muted py-3">暂无数据</div>
-                    </div>
+        
+        <transition name="fade-slide"><div v-show="curPage===1">
+            <div class="page-header justify-content-between">
+                <h1 class="big-title">Today</h1>
+                <span class="badge bg-secondary text-white" v-if="curNodeName">{{ curNodeName }}</span>
+            </div>
+            
+            <div class="status-bar-card" :class="stats.process_status === '运行中' ? 'bg-green-g' : 'bg-gray-g'">
+                <div class="status-label">目标程序状态</div>
+                <div class="status-value">
+                    <div class="blink-dot" v-if="stats.process_status === '运行中'"></div>
+                    {{ stats.process_status }}
                 </div>
             </div>
-        </transition>
 
-        <transition name="fade-slide">
-            <div v-show="curPage===2">
-                <div class="page-header">
-                    <h1 class="big-title">日志明细</h1>
+            <div class="row g-3 mb-4">
+                <div class="col-6"><div class="hl-card bg-dark-g"><small class="opacity-75">账号数量</small><div class="hl-num">{{ stats.total_users || 0 }}</div></div></div>
+                <div class="col-6"><div class="hl-card bg-blue-g"><small class="opacity-75">本轮累计</small><div class="hl-num">{{ stats.total_wins || 0 }}</div></div></div>
+            </div>
+            
+            <div class="apple-card">
+                <div class="d-flex align-items-center mb-3">
+                    <h5 class="fw-bold m-0 me-2">收益排行</h5>
+                    <div class="icon-btn" @click="hideNicknames = !hideNicknames" title="隐私模式"><ion-icon :name="hideNicknames ? 'eye-off-outline' : 'eye-outline'"></ion-icon></div>
+                    <span class="date-range-badge ms-auto" v-if="stats.date_range">{{ stats.date_range }}</span>
                 </div>
-                
-                <div class="apple-card">
-                    <input class="form-control mb-3" placeholder="搜索..." v-model="searchText">
-                    <div style="max-height: 70vh; overflow-y: auto;">
-                        <table class="table table-borderless align-middle">
-                            <thead class="small border-bottom">
-                                <tr>
-                                    <th style="padding-bottom: 10px;">
-                                        <div class="d-flex align-items-center">
-                                            <span>用户 / 时间</span>
-                                            <div class="icon-btn ms-1" @click="hideNicknames = !hideNicknames" title="隐私模式">
-                                                <ion-icon :name="hideNicknames ? 'eye-off-outline' : 'eye-outline'" style="font-size: 20px;"></ion-icon>
-                                            </div>
-                                        </div>
-                                    </th>
-                                    <th class="text-end" style="padding-bottom: 10px;">数量</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="item in filteredDetails" class="border-bottom">
-                                    <td class="py-3">
-                                        <div class="fw-bold text-truncate" style="max-width: 220px; font-size: 1rem;">
-                                            {{ hideNicknames ? '***' : item.nickname }}
-                                        </div>
-                                        <div class="text-muted small" style="font-size: 0.8rem; margin-top: 4px;">
-                                            {{ item.log_time }}
-                                        </div>
-                                    </td>
-                                    
-                                    <td class="text-end py-3 align-middle">
-                                        <span class="text-primary fw-bold" style="font-size: 1.5rem; letter-spacing: -0.5px;">
-                                            {{ item.quantity }}
-                                        </span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                <div class="rank-container">
+                    <div v-for="(user, i) in stats.rank_list" :key="i" class="list-row">
+                        <div class="d-flex align-items-center flex-grow-1" style="min-width: 0;"><div class="fw-bold text-truncate pe-2">{{ hideNicknames ? '***' : user.nickname }}</div></div>
+                        <div class="d-flex align-items-center"><span class="text-muted small me-3" style="font-weight: 500;">{{ user.win_times }} 次</span><span class="text-primary fw-bold" style="font-size: 1.1rem; min-width: 40px; text-align: right;">{{ user.win_sum }}</span></div>
                     </div>
+                    <div v-if="stats.rank_list.length===0" class="text-center text-muted py-3">暂无数据</div>
                 </div>
             </div>
-        </transition>
+        </div></transition>
 
-        <transition name="fade-slide">
-            <div v-show="curPage===3">
-                <div class="page-header justify-content-between">
-                    <h1 class="big-title">历史记录</h1>
-                    <div class="d-flex align-items-center gap-1">
-                        <div class="icon-btn" @click="hideHistory = !hideHistory" title="隐私开关">
-                            <ion-icon :name="hideHistory ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
-                        </div>
-                        <div class="icon-btn" @click="handleHistoryEdit" title="修改展开项">
-                            <ion-icon name="create-outline"></ion-icon>
-                        </div>
-                    </div>
-                </div>
-                
-                <div v-if="!stats.history_data || stats.history_data.length===0" class="text-center text-muted py-5">
-                    暂无历史数据
-                </div>
-                <div class="accordion-item" v-for="day in stats.history_data" :key="day.date">
-                    <div class="accordion-header" @click="toggleDate(day.date)">
-                        <div class="d-flex align-items-center">
-                            <span class="date">{{ day.date }}</span>
-                            <span class="badge bg-warning text-dark ms-2" v-if="day.is_manual">已修正</span>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <span class="summary text-primary me-2">
-                                {{ (hideHistory && !expandedDates[day.date]) ? '**' : ('+' + day.daily_sum) }}
-                            </span>
-                            <span class="arrow" :class="{ rotated: expandedDates[day.date] }">▼</span>
-                        </div>
-                    </div>
-                    <div class="accordion-body" v-if="expandedDates[day.date]">
-                        <div class="detail-row">
-                            <span>👥 参与账号数量</span>
-                            <span class="fw-bold text-dark-adaptive">{{ day.user_count }}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span>💰 当日总收益</span>
-                            <span class="fw-bold text-dark-adaptive">{{ day.daily_sum }}</span>
-                        </div>
-                    </div>
+        <transition name="fade-slide"><div v-show="curPage===2">
+            <div class="page-header"><h1 class="big-title">日志明细</h1></div>
+            <div class="apple-card">
+                <input class="form-control mb-3" placeholder="搜索..." v-model="searchText">
+                <div style="max-height: 70vh; overflow-y: auto;">
+                    <table class="table table-borderless align-middle">
+                        <thead class="small border-bottom"><tr><th style="padding-bottom: 10px;"><div class="d-flex align-items-center"><span>用户 / 时间</span><div class="icon-btn ms-1" @click="hideNicknames = !hideNicknames"><ion-icon :name="hideNicknames ? 'eye-off-outline' : 'eye-outline'" style="font-size: 20px;"></ion-icon></div></div></th><th class="text-end" style="padding-bottom: 10px;">数量</th></tr></thead>
+                        <tbody><tr v-for="item in filteredDetails" class="border-bottom"><td class="py-3"><div class="fw-bold text-truncate" style="max-width: 220px; font-size: 1rem;">{{ hideNicknames ? '***' : item.nickname }}</div><div class="text-muted small" style="font-size: 0.8rem; margin-top: 4px;">{{ item.log_time }}</div></td><td class="text-end py-3 align-middle"><span class="text-primary fw-bold" style="font-size: 1.5rem; letter-spacing: -0.5px;">{{ item.quantity }}</span></td></tr></tbody>
+                    </table>
                 </div>
             </div>
-        </transition>
+        </div></transition>
+
+        <transition name="fade-slide"><div v-show="curPage===3">
+            <div class="page-header justify-content-between">
+                <h1 class="big-title">历史记录</h1>
+                <div class="d-flex align-items-center gap-1">
+                    <div class="icon-btn" @click="hideHistory = !hideHistory" title="隐私开关"><ion-icon :name="hideHistory ? 'eye-off-outline' : 'eye-outline'"></ion-icon></div>
+                    <div class="icon-btn" @click="handleHistoryEdit" title="修改展开项"><ion-icon name="create-outline"></ion-icon></div>
+                </div>
+            </div>
+            <div v-if="!stats.history_data || stats.history_data.length===0" class="text-center text-muted py-5">暂无历史数据</div>
+            <div class="accordion-item" v-for="day in stats.history_data" :key="day.date">
+                <div class="accordion-header" @click="toggleDate(day.date)">
+                    <div class="d-flex align-items-center"><span class="date">{{ day.date }}</span><span class="badge bg-warning text-dark ms-2" v-if="day.is_manual">已修正</span></div>
+                    <div class="d-flex align-items-center"><span class="summary text-primary me-2">{{ (hideHistory && !expandedDates[day.date]) ? '**' : ('+' + day.daily_sum) }}</span><span class="arrow" :class="{ rotated: expandedDates[day.date] }">▼</span></div>
+                </div>
+                <div class="accordion-body" v-if="expandedDates[day.date]">
+                    <div class="detail-row"><span>👥 参与账号数量</span><span class="fw-bold text-dark-adaptive">{{ day.user_count }}</span></div>
+                    <div class="detail-row"><span>💰 当日总收益</span><span class="fw-bold text-dark-adaptive">{{ day.daily_sum }}</span></div>
+                </div>
+            </div>
+        </div></transition>
+
+        <transition name="fade-slide"><div v-show="curPage===4">
+            <div class="page-header"><h1 class="big-title">节点选择</h1></div>
+            
+            <div v-if="nodeList.length === 0" class="text-center text-muted py-5">
+                <ion-icon name="server-outline" style="font-size: 48px; opacity: 0.5; margin-bottom: 10px;"></ion-icon>
+                <div>暂无在线节点</div>
+            </div>
+
+            <div v-for="node in nodeList" :key="node.device_id" class="node-row" :class="{selected: curNodeId === node.device_id}" @click="selectNode(node)">
+                <div class="node-status-dot" :class="node.is_online ? 'online' : 'offline'"></div>
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center mb-1">
+                        <span class="fw-bold me-2" style="font-size: 1.1rem;">{{ node.nickname }}</span>
+                        <span v-if="curNodeId === node.device_id" class="badge bg-primary rounded-pill" style="font-size: 0.6rem;">当前选择</span>
+                    </div>
+                    <div class="text-muted small" style="font-family: monospace;">ID: {{ node.device_id.substring(0, 8) }}...</div>
+                </div>
+                <div class="text-end">
+                    <span class="badge" :class="node.process_running ? 'bg-success' : 'bg-secondary'">
+                        {{ node.process_running ? '运行中' : '未运行' }}
+                    </span>
+                </div>
+            </div>
+        </div></transition>
+
     </div>
 
     <nav class="bottom-nav">
@@ -294,6 +232,7 @@
             <a class="nav-item-c" :class="{active: curPage===1}" @click="curPage=1">总览</a>
             <a class="nav-item-c" :class="{active: curPage===2}" @click="curPage=2">明细</a>
             <a class="nav-item-c" :class="{active: curPage===3}" @click="curPage=3">历史</a>
+            <a class="nav-item-c" :class="{active: curPage===4}" @click="curPage=4">节点</a>
         </div>
     </nav>
 </div>
@@ -304,50 +243,45 @@
 <script>
     const { createApp, ref, computed, onMounted } = Vue;
 
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW fail:', err));
-        });
-    }
-
     createApp({
         setup() {
             const curPage = ref(1);
             const expandedDates = ref({}); 
-            const stats = ref({ client_status: "离线", total_users: 0, total_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" });
+            const stats = ref({ process_status: "未知", total_users: 0, total_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" });
             const searchText = ref("");
             const editModal = ref({ show: false, type: 'history', data: { field1: '', field2: 0, field3: 0 } });
             const hideNicknames = ref(false);
             const hideHistory = ref(false);
             
-            // 🔥 新增节点管理
+            // 节点逻辑
             const nodeList = ref([]);
-            const curNode = ref("");
+            const curNodeId = ref("");
+            const curNodeName = ref("");
 
             const loadNodes = async () => {
                 try {
                     const res = await axios.get('/api/nodes');
-                    if (res.data.nodes && res.data.nodes.length > 0) {
-                        nodeList.value = res.data.nodes;
-                        // 默认选中第一个，或者之前保存的
-                        if (!curNode.value) curNode.value = nodeList.value[0];
+                    nodeList.value = res.data.nodes;
+                    // 如果没有选过，或者选中的节点不在列表中（且有列表），默认选中第一个
+                    if ((!curNodeId.value) && nodeList.value.length > 0) {
+                        selectNode(nodeList.value[0], false);
                     }
                 } catch(e) {}
             };
 
+            const selectNode = (node, jump=true) => {
+                curNodeId.value = node.device_id;
+                curNodeName.value = node.nickname;
+                loadData();
+                if (jump) curPage.value = 1; // 选中后跳回首页
+            };
+
             const loadData = async () => {
-                if (!curNode.value) return;
+                if (!curNodeId.value) return;
                 try {
-                    // 🔥 请求带上 node 参数
-                    const res = await axios.get(`/api/stats?node=${encodeURIComponent(curNode.value)}`);
+                    const res = await axios.get(`/api/stats?node_id=${encodeURIComponent(curNodeId.value)}`);
                     stats.value = res.data;
                 } catch(e) { console.error(e); }
-            };
-            
-            const changeNode = () => {
-                // 切换节点时立即刷新
-                stats.value = { client_status: "加载中...", total_users: 0, total_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" };
-                loadData();
             };
 
             const filteredDetails = computed(() => {
@@ -364,12 +298,9 @@
             const handleHistoryEdit = () => {
                 const openedDates = Object.keys(expandedDates.value).filter(d => expandedDates.value[d]);
                 if (openedDates.length === 0) { alert("当前无数据展开"); return; }
-                if (openedDates.length > 1) { alert("请只展开一项需修改的数据"); return; }
-                
                 const targetDate = openedDates[0];
                 const dayData = stats.value.history_data.find(d => d.date === targetDate);
                 if (dayData) {
-                    editModal.value.type = 'history';
                     editModal.value.data = { field1: dayData.date, field2: dayData.daily_sum, field3: dayData.user_count };
                     editModal.value.show = true;
                 }
@@ -381,7 +312,7 @@
                 try {
                     await axios.post('/api/update_history', {
                         date: editModal.value.data.field1,
-                        client_id: curNode.value, // 🔥 修正历史数据时也带上 ID
+                        device_id: curNodeId.value,
                         manual_sum: editModal.value.data.field2,
                         manual_users: editModal.value.data.field3
                     });
@@ -392,20 +323,18 @@
 
             onMounted(async () => {
                 editModal.value.show = false;
-                await loadNodes(); // 先加载节点
+                await loadNodes();
                 loadData();
                 setInterval(() => {
-                    loadData();
-                    // 偶尔刷新一下节点列表，以防有新设备加入
-                    if(Math.random() > 0.8) loadNodes(); 
+                    loadData(); // 刷新数据
+                    loadNodes(); // 刷新节点状态
                 }, 2000);
             });
 
             return { 
                 curPage, stats, searchText, filteredDetails, expandedDates, toggleDate,
-                editModal, closeModal, saveEdit,
-                hideNicknames, hideHistory, handleHistoryEdit,
-                nodeList, curNode, changeNode // 导出新变量
+                editModal, closeModal, saveEdit, hideNicknames, hideHistory, handleHistoryEdit,
+                nodeList, curNodeId, curNodeName, selectNode
             };
         }
     }).mount('#app');
