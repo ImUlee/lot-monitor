@@ -61,6 +61,7 @@
         .bg-gray-g { background: linear-gradient(135deg, #8E8E93, #636366); }
         .bg-blue-g { background: var(--blue-card-bg); }
         .bg-offline-g { background: linear-gradient(135deg, #FF3B30, #C0392B); } 
+        .bg-lock-g { background: linear-gradient(135deg, #FF9500, #FF5E3A); } /* 无权限颜色：橙色 */
         
         .list-row { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
         .rank-container { max-height: 60vh; overflow-y: auto; padding-right: 5px; }
@@ -107,6 +108,10 @@
         .node-status-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 12px; }
         .node-status-dot.online { background: #34C759; box-shadow: 0 0 8px rgba(52, 199, 89, 0.5); }
         .node-status-dot.offline { background: #8E8E93; }
+        
+        /* Checkbox Style */
+        .form-check-input { cursor: pointer; }
+        .form-check-label { cursor: pointer; user-select: none; }
     </style>
 </head>
 <body>
@@ -129,8 +134,12 @@
     <div class="custom-modal-overlay" v-if="authModal.show">
         <div class="custom-modal">
             <h5 class="fw-bold mb-3">请输入节点密码</h5>
-            <div class="mb-4">
+            <div class="mb-3">
                 <input type="password" class="form-control" v-model="authModal.password" placeholder="该节点已加密" @keyup.enter="confirmPassword">
+            </div>
+            <div class="mb-4 form-check">
+                <input class="form-check-input" type="checkbox" id="rememberCheck" v-model="authModal.remember">
+                <label class="form-check-label small text-muted" for="rememberCheck">记住密码</label>
             </div>
             <div class="d-flex justify-content-end gap-2">
                 <button class="btn btn-secondary rounded-pill px-4" @click="authModal.show = false">取消</button>
@@ -254,35 +263,52 @@
             const stats = ref({ process_status: "未知", total_users: 0, total_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" });
             const searchText = ref("");
             const editModal = ref({ show: false, data: { field1: '', field2: 0, field3: 0 } });
-            const authModal = ref({ show: false, password: "", targetNode: null }); // 🔥 验证相关
+            // 🔥 authModal 增加 remember 字段
+            const authModal = ref({ show: false, password: "", remember: false, targetNode: null }); 
             const hideNicknames = ref(false);
             const hideHistory = ref(false);
             const nodeList = ref([]);
             const curNodeId = ref("");
             const curNodeName = ref("");
-            const curPassword = ref(""); // 🔥 存储当前会话的密码
+            const curPassword = ref(""); 
+            const isAuthError = ref(false); // 🔥 防止重复弹窗的标记
 
             const loadNodes = async () => {
                 try {
                     const res = await axios.get('/api/nodes');
                     nodeList.value = res.data.nodes;
                     if ((!curNodeId.value) && nodeList.value.length > 0) {
-                        // 首次加载不需要密码（后端会拦截数据，但不会报错）
-                        curNodeId.value = nodeList.value[0].device_id;
-                        curNodeName.value = nodeList.value[0].nickname;
+                        const first = nodeList.value[0];
+                        // 首次自动加载：也尝试读取缓存密码
+                        const saved = localStorage.getItem(`pwd_${first.device_id}`);
+                        if (saved) curPassword.value = saved;
+                        curNodeId.value = first.device_id;
+                        curNodeName.value = first.nickname;
                         loadData();
                     }
                 } catch(e) {}
             };
 
             const selectNode = (node) => {
+                isAuthError.value = false; // 切换节点时重置错误标记
+                
+                // 1. 检查是否有本地存储的密码
+                const savedPass = localStorage.getItem(`pwd_${node.device_id}`);
+                
                 if (node.has_password) {
-                    // 需要密码
-                    authModal.value.targetNode = node;
-                    authModal.value.password = "";
-                    authModal.value.show = true;
+                    if (savedPass) {
+                        // 有缓存密码，直接用
+                        curPassword.value = savedPass;
+                        performSwitch(node);
+                    } else {
+                        // 无缓存，弹窗
+                        authModal.value.targetNode = node;
+                        authModal.value.password = "";
+                        authModal.value.remember = false;
+                        authModal.value.show = true;
+                    }
                 } else {
-                    // 无密码直接切换
+                    // 无密码节点
                     curPassword.value = "";
                     performSwitch(node);
                 }
@@ -290,6 +316,12 @@
 
             const confirmPassword = () => {
                 curPassword.value = authModal.value.password;
+                
+                // 🔥 如果勾选记住密码，存入 localStorage
+                if (authModal.value.remember && authModal.value.targetNode) {
+                    localStorage.setItem(`pwd_${authModal.value.targetNode.device_id}`, authModal.value.password);
+                }
+                
                 authModal.value.show = false;
                 performSwitch(authModal.value.targetNode);
             };
@@ -304,13 +336,26 @@
             const loadData = async () => {
                 if (!curNodeId.value) return;
                 try {
-                    // 🔥 带上密码参数
                     const res = await axios.get(`/api/stats?node_id=${encodeURIComponent(curNodeId.value)}&password=${encodeURIComponent(curPassword.value)}`);
                     stats.value = res.data;
+                    isAuthError.value = false; // 成功则重置错误
                 } catch(e) {
                     if (e.response && e.response.status === 403) {
-                        alert("密码错误");
-                        stats.value = { process_status: "无权限", total_users: 0, total_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" };
+                        stats.value = { process_status: "🔒 无权限", total_users: 0, total_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" };
+                        
+                        // 🔥 防骚扰逻辑
+                        if (!isAuthError.value) {
+                            alert("密码错误，请重新输入");
+                            isAuthError.value = true; // 标记为已报错，下次轮询不再弹窗
+                            
+                            // 如果是因为存了错误密码导致的，清除缓存并重新弹窗
+                            if (localStorage.getItem(`pwd_${curNodeId.value}`)) {
+                                localStorage.removeItem(`pwd_${curNodeId.value}`);
+                                // 找到当前节点对象重新触发选择流程（会弹出输入框）
+                                const node = nodeList.value.find(n => n.device_id === curNodeId.value);
+                                if (node) selectNode(node);
+                            }
+                        }
                     }
                 }
             };
@@ -318,6 +363,7 @@
             const getStatusClass = (status) => {
                 if (status === '运行中') return 'bg-green-g';
                 if (status === '离线') return 'bg-offline-g';
+                if (status === '🔒 无权限') return 'bg-lock-g'; // 橙色
                 return 'bg-gray-g';
             };
 
@@ -363,7 +409,6 @@
                 await loadNodes();
                 loadData();
                 setInterval(() => { 
-                    // 这里不自动刷新 loadData 以免频繁弹 403，只在页面切回来时或者已授权时刷新
                     if(curNodeId.value) loadData(); 
                     loadNodes(); 
                 }, 2000);
