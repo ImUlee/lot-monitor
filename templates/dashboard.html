@@ -88,6 +88,7 @@
         input::placeholder { color: var(--text-sub) !important; opacity: 0.7; }
         .icon-btn { width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background-color 0.2s, transform 0.1s; user-select: none; }
         .icon-btn:active { transform: scale(0.92); background-color: var(--icon-btn-active); }
+        .icon-btn.active { background-color: var(--nav-bg-active); color: #007AFF; } /* 激活状态颜色 */
         ion-icon { font-size: 24px; color: var(--icon-color); --ionicon-stroke-width: 40px; }
         .date-range-badge { font-size: 0.75rem; color: var(--text-sub); background: var(--badge-bg); padding: 2px 8px; border-radius: 6px; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; }
         .fade-slide-enter-active, .fade-slide-leave-active { transition: opacity 0.2s; }
@@ -110,6 +111,10 @@
         .node-status-dot.offline { background: #8E8E93; }
         .form-check-input { cursor: pointer; }
         .form-check-label { cursor: pointer; user-select: none; }
+        
+        /* 🔥 显眼的红色移除按钮 (管理模式下显示) */
+        .remove-icon-wrapper { color: #FF3B30; display: flex; align-items: center; font-size: 26px; transition: transform 0.2s; }
+        .remove-icon-wrapper:active { transform: scale(0.9); }
     </style>
 </head>
 <body>
@@ -215,7 +220,12 @@
         </div></transition>
 
         <transition name="fade-slide"><div v-show="curPage===4">
-            <div class="page-header"><h1 class="big-title">节点选择</h1></div>
+            <div class="page-header justify-content-between">
+                <h1 class="big-title">节点选择</h1>
+                <div class="icon-btn" @click="isManageMode = !isManageMode" :class="{active: isManageMode}" title="管理节点">
+                    <ion-icon name="create-outline"></ion-icon>
+                </div>
+            </div>
             <div v-if="nodeList.length === 0" class="text-center text-muted py-5"><ion-icon name="server-outline" style="font-size: 48px; opacity: 0.5; margin-bottom: 10px;"></ion-icon><div>暂无节点</div></div>
             
             <div v-for="node in nodeList" :key="node.device_id" class="node-row" :class="{selected: curNodeId === node.device_id}" @click="selectNode(node)">
@@ -228,10 +238,14 @@
                     </div>
                     <div class="text-muted small" style="font-family: monospace;">ID: {{ node.device_id.substring(0, 8) }}...</div>
                 </div>
-                <div class="text-end">
-                    <span class="badge" :class="node.is_online ? 'bg-success' : 'bg-secondary'">
+                <div class="text-end d-flex align-items-center">
+                    <span class="badge" :class="node.is_online ? 'bg-success' : 'bg-secondary'" v-if="!isManageMode">
                         {{ node.is_online ? '在线' : '离线' }}
                     </span>
+                    
+                    <div class="remove-icon-wrapper" v-if="isManageMode" @click.stop="deleteNode(node)">
+                        <ion-icon name="remove-circle"></ion-icon>
+                    </div>
                 </div>
             </div>
         </div></transition>
@@ -240,10 +254,10 @@
 
     <nav class="bottom-nav">
         <div class="nav-tabs-c">
-            <a class="nav-item-c" :class="{active: curPage===1}" @click="curPage=1">总览</a>
-            <a class="nav-item-c" :class="{active: curPage===2}" @click="curPage=2">明细</a>
-            <a class="nav-item-c" :class="{active: curPage===3}" @click="curPage=3">历史</a>
-            <a class="nav-item-c" :class="{active: curPage===4}" @click="curPage=4">节点</a>
+            <a class="nav-item-c" :class="{active: curPage===1}" @click="changeTab(1)">总览</a>
+            <a class="nav-item-c" :class="{active: curPage===2}" @click="changeTab(2)">明细</a>
+            <a class="nav-item-c" :class="{active: curPage===3}" @click="changeTab(3)">历史</a>
+            <a class="nav-item-c" :class="{active: curPage===4}" @click="changeTab(4)">节点</a>
         </div>
     </nav>
 </div>
@@ -269,6 +283,12 @@
             const curNodeName = ref("");
             const curPassword = ref(""); 
             const isAuthError = ref(false);
+            const isManageMode = ref(false); // 🔥 管理模式开关
+
+            const changeTab = (page) => {
+                curPage.value = page;
+                isManageMode.value = false; // 切页自动关闭管理模式
+            };
 
             const loadNodes = async () => {
                 try {
@@ -278,17 +298,17 @@
                     if ((!curNodeId.value) && nodeList.value.length > 0) {
                         const lastId = localStorage.getItem('last_node_id');
                         const target = nodeList.value.find(n => n.device_id === lastId) || nodeList.value[0];
-                        selectNode(target); // 使用通用逻辑（含缓存检查）
+                        selectNode(target); 
                     }
                 } catch(e) {}
             };
 
             const selectNode = (node) => {
-                isAuthError.value = false;
-                
-                // 🔥 记录最后一次选择的节点 ID
-                localStorage.setItem('last_node_id', node.device_id);
+                // 🔥 管理模式下点击行不触发切换，只允许点删除按钮
+                if (isManageMode.value) return; 
 
+                isAuthError.value = false;
+                localStorage.setItem('last_node_id', node.device_id);
                 const savedPass = localStorage.getItem(`pwd_${node.device_id}`);
                 
                 if (node.has_password) {
@@ -320,11 +340,20 @@
                 curNodeId.value = node.device_id;
                 curNodeName.value = node.nickname;
                 loadData();
-                // 只有当不是初始化加载时，才跳回首页
-                // 但为了体验一致，这里我们不强制判断，只要点击了就跳
-                // 如果是自动加载的，不需要跳，逻辑在 loadNodes 里区分
-                if (node.device_id === localStorage.getItem('last_node_id')) {
-                    // 保持当前页或者跳？为了简单，这里不做特殊处理，通常 selectNode 是手动触发的
+            };
+
+            const deleteNode = async (node) => {
+                if(!confirm(`确定要删除节点 "${node.nickname}" 吗？\n删除后如果节点重新上线，它会自动恢复。`)) return;
+                try {
+                    await axios.post('/api/node/delete', { device_id: node.device_id });
+                    if (curNodeId.value === node.device_id) {
+                        curNodeId.value = "";
+                        curNodeName.value = "";
+                        localStorage.removeItem('last_node_id');
+                    }
+                    await loadNodes(); 
+                } catch(e) {
+                    alert("删除失败");
                 }
             };
 
@@ -341,7 +370,6 @@
                         if (!isAuthError.value) {
                             alert("密码错误，请重新输入");
                             isAuthError.value = true;
-                            
                             if (localStorage.getItem(`pwd_${curNodeId.value}`)) {
                                 localStorage.removeItem(`pwd_${curNodeId.value}`);
                                 const node = nodeList.value.find(n => n.device_id === curNodeId.value);
@@ -407,10 +435,10 @@
             });
 
             return { 
-                curPage, stats, searchText, filteredDetails, expandedDates, toggleDate,
+                curPage, changeTab, stats, searchText, filteredDetails, expandedDates, toggleDate,
                 editModal, authModal, closeModal, saveEdit, confirmPassword,
-                hideNicknames, hideHistory, handleHistoryEdit,
-                nodeList, curNodeId, curNodeName, selectNode, getStatusClass
+                hideNicknames, hideHistory, handleHistoryEdit, deleteNode,
+                nodeList, curNodeId, curNodeName, selectNode, getStatusClass, isManageMode
             };
         }
     }).mount('#app');
