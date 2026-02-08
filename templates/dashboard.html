@@ -81,7 +81,6 @@
         .arrow.rotated { transform: rotate(180deg); }
         .custom-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--modal-overlay); z-index: 9999; display: flex; justify-content: center; align-items: center; }
         .custom-modal { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; width: 90%; max-width: 400px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: popIn 0.2s ease-out; color: var(--text-main); }
-        .full-screen-modal { width: 95%; max-width: 800px; height: 90%; display: flex; flex-direction: column; }
         @keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
         .form-control { background-color: var(--input-bg); border-color: var(--input-border); color: var(--text-main); }
         .form-control:focus { background-color: var(--input-bg); color: var(--text-main); border-color: #007AFF; box-shadow: 0 0 0 0.2rem rgba(0,122,255,0.25); }
@@ -89,7 +88,6 @@
         input::placeholder { color: var(--text-sub) !important; opacity: 0.7; }
         .icon-btn { width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background-color 0.2s, transform 0.1s; user-select: none; }
         .icon-btn:active { transform: scale(0.92); background-color: var(--icon-btn-active); }
-        .icon-btn.active { background-color: var(--nav-bg-active); color: #007AFF; }
         ion-icon { font-size: 24px; color: var(--icon-color); --ionicon-stroke-width: 40px; }
         .date-range-badge { font-size: 0.75rem; color: var(--text-sub); background: var(--badge-bg); padding: 2px 8px; border-radius: 6px; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; }
         .fade-slide-enter-active, .fade-slide-leave-active { transition: opacity 0.2s; }
@@ -103,6 +101,7 @@
         .fw-bold { color: var(--text-main) !important; }
         .text-primary { color: #007AFF !important; }
         @media (prefers-color-scheme: dark) { .text-primary { color: #0A84FF !important; } }
+        
         .node-row { display: flex; align-items: center; padding: 16px; background: var(--card-bg); border-radius: 12px; margin-bottom: 10px; border: 2px solid transparent; cursor: pointer; transition: all 0.2s; }
         .node-row:active { transform: scale(0.98); }
         .node-row.selected { border-color: #007AFF; background: rgba(0,122,255,0.05); }
@@ -111,15 +110,6 @@
         .node-status-dot.offline { background: #8E8E93; }
         .form-check-input { cursor: pointer; }
         .form-check-label { cursor: pointer; user-select: none; }
-        .del-btn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: 0.2s; color: #FF3B30; }
-        .del-btn:hover { background: rgba(255, 59, 48, 0.1); }
-        .del-btn:active { transform: scale(0.9); }
-        
-        /* 🔥 新增样式 */
-        .search-type-select { width: 90px; border-top-right-radius: 0; border-bottom-right-radius: 0; background-color: var(--input-bg); border-color: var(--input-border); color: var(--text-main); }
-        .search-input-group input { border-top-left-radius: 0; border-bottom-left-radius: 0; }
-        .checkbox-wrapper { display: flex; align-items: center; margin-bottom: 12px; margin-left: 5px; }
-        .log-modal-body { flex: 1; overflow-y: auto; padding: 0 10px; }
     </style>
 </head>
 <body>
@@ -142,34 +132,16 @@
     <div class="custom-modal-overlay" v-if="authModal.show">
         <div class="custom-modal">
             <h5 class="fw-bold mb-3">请输入节点密码</h5>
-            <div class="mb-3"><input type="password" class="form-control" v-model="authModal.password" placeholder="该节点已加密" @keyup.enter="confirmPassword"></div>
-            <div class="mb-4 form-check"><input class="form-check-input" type="checkbox" id="rememberCheck" v-model="authModal.remember"><label class="form-check-label small text-muted" for="rememberCheck">记住密码</label></div>
+            <div class="mb-3">
+                <input type="password" class="form-control" v-model="authModal.password" placeholder="该节点已加密" @keyup.enter="confirmPassword">
+            </div>
+            <div class="mb-4 form-check">
+                <input class="form-check-input" type="checkbox" id="rememberCheck" v-model="authModal.remember">
+                <label class="form-check-label small text-muted" for="rememberCheck">记住密码</label>
+            </div>
             <div class="d-flex justify-content-end gap-2">
                 <button class="btn btn-secondary rounded-pill px-4" @click="authModal.show = false">取消</button>
                 <button class="btn btn-primary rounded-pill px-4" @click="confirmPassword">确定</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="custom-modal-overlay" v-if="historyLogsModal.show">
-        <div class="custom-modal full-screen-modal">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="fw-bold m-0">{{ historyLogsModal.date }} 详情</h5>
-                <div class="icon-btn" @click="historyLogsModal.show = false"><ion-icon name="close"></ion-icon></div>
-            </div>
-            <div class="log-modal-body">
-                <div v-if="historyLogsModal.loading" class="text-center py-5 text-muted">加载中...</div>
-                <div v-else-if="historyLogsModal.logs.length === 0" class="text-center py-5 text-muted">当日无数据</div>
-                <table v-else class="table table-borderless align-middle">
-                    <thead class="small border-bottom"><tr><th>时间</th><th>用户</th><th class="text-end">数量</th></tr></thead>
-                    <tbody>
-                        <tr v-for="log in historyLogsModal.logs" class="border-bottom">
-                            <td class="text-muted small">{{ log.log_time.split(' ')[1] || log.log_time }}</td>
-                            <td class="fw-bold">{{ hideNicknames ? '***' : log.nickname }}</td>
-                            <td class="text-end fw-bold text-primary">{{ log.quantity }}</td>
-                        </tr>
-                    </tbody>
-                </table>
             </div>
         </div>
     </div>
@@ -211,20 +183,8 @@
         <transition name="fade-slide"><div v-show="curPage===2">
             <div class="page-header"><h1 class="big-title">日志明细</h1></div>
             <div class="apple-card">
-                <div class="input-group mb-2 search-input-group">
-                    <select class="form-select search-type-select" v-model="searchType">
-                        <option value="nick">昵称</option>
-                        <option value="date">日期</option>
-                    </select>
-                    <input class="form-control" :placeholder="searchType==='nick'?'搜索昵称...':'搜索日期 (如 2023-10-01)'" v-model="searchText">
-                </div>
-                
-                <div class="checkbox-wrapper">
-                    <input class="form-check-input me-2" type="checkbox" id="filterSmall" v-model="filterSmallPacks">
-                    <label class="form-check-label text-muted small" for="filterSmall">过滤小包 (&lt;24)</label>
-                </div>
-
-                <div style="max-height: 65vh; overflow-y: auto;">
+                <input class="form-control mb-3" placeholder="搜索..." v-model="searchText">
+                <div style="max-height: 70vh; overflow-y: auto;">
                     <table class="table table-borderless align-middle">
                         <thead class="small border-bottom"><tr><th style="padding-bottom: 10px;"><div class="d-flex align-items-center"><span>用户 / 时间</span><div class="icon-btn ms-1" @click="hideNicknames = !hideNicknames"><ion-icon :name="hideNicknames ? 'eye-off-outline' : 'eye-outline'" style="font-size: 20px;"></ion-icon></div></div></th><th class="text-end" style="padding-bottom: 10px;">数量</th></tr></thead>
                         <tbody><tr v-for="item in filteredDetails" class="border-bottom"><td class="py-3"><div class="fw-bold text-truncate" style="max-width: 220px; font-size: 1rem;">{{ hideNicknames ? '***' : item.nickname }}</div><div class="text-muted small" style="font-size: 0.8rem; margin-top: 4px;">{{ item.log_time }}</div></td><td class="text-end py-3 align-middle"><span class="text-primary fw-bold" style="font-size: 1.5rem; letter-spacing: -0.5px;">{{ item.quantity }}</span></td></tr></tbody>
@@ -250,19 +210,14 @@
                 <div class="accordion-body" v-if="expandedDates[day.date]">
                     <div class="detail-row"><span>👥 参与账号数量</span><span class="fw-bold text-dark-adaptive">{{ day.user_count }}</span></div>
                     <div class="detail-row"><span>💰 当日总收益</span><span class="fw-bold text-dark-adaptive">{{ day.daily_sum }}</span></div>
-                    <div class="mt-3 text-end">
-                        <button class="btn btn-sm btn-outline-primary rounded-pill px-3" @click="viewHistoryLogs(day.date)">查看详细数据</button>
-                    </div>
                 </div>
             </div>
         </div></transition>
 
         <transition name="fade-slide"><div v-show="curPage===4">
-            <div class="page-header justify-content-between">
-                <h1 class="big-title">节点选择</h1>
-                <div class="icon-btn" @click="isManageMode = !isManageMode" :class="{active: isManageMode}" title="管理节点"><ion-icon name="create-outline"></ion-icon></div>
-            </div>
+            <div class="page-header"><h1 class="big-title">节点选择</h1></div>
             <div v-if="nodeList.length === 0" class="text-center text-muted py-5"><ion-icon name="server-outline" style="font-size: 48px; opacity: 0.5; margin-bottom: 10px;"></ion-icon><div>暂无节点</div></div>
+            
             <div v-for="node in nodeList" :key="node.device_id" class="node-row" :class="{selected: curNodeId === node.device_id}" @click="selectNode(node)">
                 <div class="node-status-dot" :class="node.is_online ? 'online' : 'offline'"></div>
                 <div class="flex-grow-1">
@@ -273,9 +228,10 @@
                     </div>
                     <div class="text-muted small" style="font-family: monospace;">ID: {{ node.device_id.substring(0, 8) }}...</div>
                 </div>
-                <div class="text-end d-flex align-items-center">
-                    <span class="badge me-3" :class="node.is_online ? 'bg-success' : 'bg-secondary'" v-if="!isManageMode">{{ node.is_online ? '在线' : '离线' }}</span>
-                    <div class="remove-icon-wrapper" v-if="isManageMode" @click.stop="deleteNode(node)"><ion-icon name="remove-circle"></ion-icon></div>
+                <div class="text-end">
+                    <span class="badge" :class="!node.is_online ? 'bg-secondary' : (node.process_running ? 'bg-success' : 'bg-warning text-dark')">
+                        {{ !node.is_online ? '离线' : (node.process_running ? '运行中' : '未运行') }}
+                    </span>
                 </div>
             </div>
         </div></transition>
@@ -284,10 +240,10 @@
 
     <nav class="bottom-nav">
         <div class="nav-tabs-c">
-            <a class="nav-item-c" :class="{active: curPage===1}" @click="changeTab(1)">总览</a>
-            <a class="nav-item-c" :class="{active: curPage===2}" @click="changeTab(2)">明细</a>
-            <a class="nav-item-c" :class="{active: curPage===3}" @click="changeTab(3)">历史</a>
-            <a class="nav-item-c" :class="{active: curPage===4}" @click="changeTab(4)">节点</a>
+            <a class="nav-item-c" :class="{active: curPage===1}" @click="curPage=1">总览</a>
+            <a class="nav-item-c" :class="{active: curPage===2}" @click="curPage=2">明细</a>
+            <a class="nav-item-c" :class="{active: curPage===3}" @click="curPage=3">历史</a>
+            <a class="nav-item-c" :class="{active: curPage===4}" @click="curPage=4">节点</a>
         </div>
     </nav>
 </div>
@@ -304,11 +260,8 @@
             const expandedDates = ref({}); 
             const stats = ref({ process_status: "未知", total_users: 0, total_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" });
             const searchText = ref("");
-            const searchType = ref("nick"); // 🔥 搜索类型
-            const filterSmallPacks = ref(false); // 🔥 过滤小包
             const editModal = ref({ show: false, data: { field1: '', field2: 0, field3: 0 } });
             const authModal = ref({ show: false, password: "", remember: false, targetNode: null }); 
-            const historyLogsModal = ref({ show: false, loading: false, date: "", logs: [] }); // 🔥 历史详情弹窗
             const hideNicknames = ref(false);
             const hideHistory = ref(false);
             const nodeList = ref([]);
@@ -316,29 +269,28 @@
             const curNodeName = ref("");
             const curPassword = ref(""); 
             const isAuthError = ref(false);
-            const isManageMode = ref(false);
-
-            const changeTab = (page) => {
-                curPage.value = page;
-                isManageMode.value = false;
-            };
 
             const loadNodes = async () => {
                 try {
                     const res = await axios.get('/api/nodes');
                     nodeList.value = res.data.nodes;
+                    
+                    // 🔥 首次加载：优先读取缓存的节点 ID
                     if ((!curNodeId.value) && nodeList.value.length > 0) {
                         const lastId = localStorage.getItem('last_node_id');
+                        // 如果缓存ID存在于列表中，则选中它，否则选第一个
                         const target = nodeList.value.find(n => n.device_id === lastId) || nodeList.value[0];
-                        selectNode(target); 
+                        selectNode(target);
                     }
                 } catch(e) {}
             };
 
             const selectNode = (node) => {
-                if (isManageMode.value) return; 
                 isAuthError.value = false;
+                
+                // 🔥 记录最后一次选择
                 localStorage.setItem('last_node_id', node.device_id);
+
                 const savedPass = localStorage.getItem(`pwd_${node.device_id}`);
                 
                 if (node.has_password) {
@@ -370,21 +322,7 @@
                 curNodeId.value = node.device_id;
                 curNodeName.value = node.nickname;
                 loadData();
-            };
-
-            const deleteNode = async (node) => {
-                if(!confirm(`确定要删除节点 "${node.nickname}" 吗？\n删除后如果节点重新上线，它会自动恢复。`)) return;
-                try {
-                    await axios.post('/api/node/delete', { device_id: node.device_id });
-                    if (curNodeId.value === node.device_id) {
-                        curNodeId.value = "";
-                        curNodeName.value = "";
-                        localStorage.removeItem('last_node_id');
-                    }
-                    await loadNodes(); 
-                } catch(e) {
-                    alert("删除失败");
-                }
+                curPage.value = 1;
             };
 
             const loadData = async () => {
@@ -396,9 +334,11 @@
                 } catch(e) {
                     if (e.response && e.response.status === 403) {
                         stats.value = { process_status: "🔒 无权限", total_users: 0, total_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" };
+                        
                         if (!isAuthError.value) {
                             alert("密码错误，请重新输入");
                             isAuthError.value = true;
+                            
                             if (localStorage.getItem(`pwd_${curNodeId.value}`)) {
                                 localStorage.removeItem(`pwd_${curNodeId.value}`);
                                 const node = nodeList.value.find(n => n.device_id === curNodeId.value);
@@ -409,22 +349,6 @@
                 }
             };
 
-            // 🔥 获取历史详细日志
-            const viewHistoryLogs = async (date) => {
-                historyLogsModal.value.date = date;
-                historyLogsModal.value.show = true;
-                historyLogsModal.value.loading = true;
-                historyLogsModal.value.logs = [];
-                try {
-                    const res = await axios.get(`/api/history_logs?node_id=${curNodeId.value}&date=${date}`);
-                    historyLogsModal.value.logs = res.data.logs;
-                } catch(e) {
-                    console.error(e);
-                } finally {
-                    historyLogsModal.value.loading = false;
-                }
-            };
-
             const getStatusClass = (status) => {
                 if (status === '运行中') return 'bg-green-g';
                 if (status === '离线') return 'bg-offline-g';
@@ -432,26 +356,12 @@
                 return 'bg-gray-g';
             };
 
-            // 🔥 核心计算属性：完善的筛选逻辑
             const filteredDetails = computed(() => {
                 if(!stats.value.details) return [];
                 const search = searchText.value.replace(/\s+/g, '');
-                
                 return stats.value.details.filter(i => {
-                    // 1. 过滤小包
-                    if (filterSmallPacks.value && i.quantity < 24) return false;
-                    
-                    // 2. 搜索逻辑
-                    if (!search) return true;
-                    
-                    if (searchType.value === 'nick') {
-                        // 搜昵称
-                        const cleanNick = i.nickname.replace(/\s+/g, '');
-                        return cleanNick.includes(search);
-                    } else {
-                        // 搜日期 (直接匹配 log_time 字符串)
-                        return i.log_time.includes(searchText.value); // 这里不用 clean search，允许输入空格
-                    }
+                    const cleanNick = i.nickname.replace(/\s+/g, '');
+                    return cleanNick.includes(search) || i.log_time.includes(searchText.value);
                 });
             });
 
@@ -494,13 +404,10 @@
             });
 
             return { 
-                curPage, changeTab, stats, 
-                searchText, searchType, filterSmallPacks, filteredDetails, // 🔥 新增状态
-                expandedDates, toggleDate,
-                editModal, authModal, historyLogsModal, viewHistoryLogs, // 🔥 新增Modal和方法
-                closeModal, saveEdit, confirmPassword,
-                hideNicknames, hideHistory, handleHistoryEdit, deleteNode,
-                nodeList, curNodeId, curNodeName, selectNode, getStatusClass, isManageMode
+                curPage, stats, searchText, filteredDetails, expandedDates, toggleDate,
+                editModal, authModal, closeModal, saveEdit, confirmPassword,
+                hideNicknames, hideHistory, handleHistoryEdit,
+                nodeList, curNodeId, curNodeName, selectNode, getStatusClass
             };
         }
     }).mount('#app');
