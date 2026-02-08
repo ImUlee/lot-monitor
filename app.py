@@ -36,13 +36,42 @@ def init_db():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+    # 1. 日志表
     c.execute('''CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY AUTOINCREMENT, log_time TEXT, nickname TEXT, item_type TEXT, quantity INTEGER, unique_sign TEXT UNIQUE, device_id TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS devices (device_id TEXT PRIMARY KEY, nickname TEXT, last_seen REAL, process_running INTEGER)''')
+    
+    # 2. 设备表 (🔥 新增 first_seen 字段用于固定排序)
+    c.execute('''CREATE TABLE IF NOT EXISTS devices (
+        device_id TEXT PRIMARY KEY, 
+        nickname TEXT, 
+        last_seen REAL, 
+        process_running INTEGER, 
+        first_seen REAL
+    )''')
+    
+    # 3. 历史修正表
     c.execute('''CREATE TABLE IF NOT EXISTS daily_overrides (date TEXT, device_id TEXT, manual_users INTEGER, manual_sum INTEGER, PRIMARY KEY (date, device_id))''')
     conn.commit()
     conn.close()
 
 init_db()
+
+# 🔥 核心辅助函数：稳定更新设备状态
+def update_device_status(device_id, nickname, process_running):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    now = time.time()
+    
+    # 1. 尝试更新现有的 (不改变 first_seen)
+    c.execute("UPDATE devices SET nickname=?, last_seen=?, process_running=? WHERE device_id=?", 
+              (nickname, now, process_running, device_id))
+    
+    # 2. 如果没有更新任何行（说明是新设备），则插入 (记录 first_seen)
+    if c.rowcount == 0:
+        c.execute("INSERT INTO devices (device_id, nickname, last_seen, process_running, first_seen) VALUES (?, ?, ?, ?, ?)", 
+                  (device_id, nickname, now, process_running, now))
+                  
+    conn.commit()
+    conn.close()
 
 @app.route('/manifest.json')
 def serve_manifest(): return send_from_directory('static', 'manifest.json', mimetype='application/json')
@@ -58,7 +87,8 @@ def get_nodes():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
-    c.execute("SELECT * FROM devices ORDER BY last_seen DESC")
+    # 🔥 核心修改：按 first_seen 正序排列，位置永远固定
+    c.execute("SELECT * FROM devices ORDER BY first_seen ASC")
     rows = c.fetchall()
     nodes = []
     now = time.time()
@@ -79,15 +109,14 @@ def heartbeat():
     device_id = data.get('device_id')
     nickname = data.get('nickname', 'Unknown')
     process_running = 1 if data.get('process_running', False) else 0
+    
     if not device_id: return jsonify({"status": "error"}), 400
-    conn = sqlite3.connect(DB_PATH)
+    
     try:
-        conn.execute("REPLACE INTO devices (device_id, nickname, last_seen, process_running) VALUES (?, ?, ?, ?)", 
-                     (device_id, nickname, time.time(), process_running))
-        conn.commit()
+        # 🔥 使用新的更新逻辑
+        update_device_status(device_id, nickname, process_running)
         return jsonify({"status": "ok"})
     except Exception as e: return jsonify({"error": str(e)}), 500
-    finally: conn.close()
 
 @app.route('/api/health', methods=['GET'])
 def health_check(): return jsonify({"status": "online", "server": "LittlePilot"})
@@ -111,20 +140,24 @@ def upload_file():
     file = request.files.get('file')
     device_id = request.form.get('device_id')
     nickname = request.form.get('nickname', 'Unknown')
-    # 🔥 核心修复：接收客户端传来的真实进程状态，而不是写死 1
+    
+    # 接收客户端传来的真实进程状态
     process_status_str = request.form.get('process_running', 'False')
     process_running = 1 if process_status_str == 'True' else 0
     
     if not file or not device_id: return jsonify({"status": "error"}), 400
     
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("REPLACE INTO devices (device_id, nickname, last_seen, process_running) VALUES (?, ?, ?, ?)", 
-                 (device_id, nickname, time.time(), process_running))
+    # 🔥 更新设备状态
+    update_device_status(device_id, nickname, process_running)
     
     raw_data = file.read()
     try: content = raw_data.decode('gb18030')
     except: content = raw_data.decode('utf-8', errors='ignore')
     lines = content.split('\n')
+    c = conn.cursor() # 这里需要单独连接吗？不需要，因为 update_device_status 已经处理了设备状态
+    
+    # 重新连接处理日志插入
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     new_count = 0
     pattern = r"\[(.*?)\]\s+(.*?)_\d+\s+\|.*?[,，]\s*(?:.*?)[,，]\s*(\d+)"
@@ -171,6 +204,7 @@ def get_stats():
         else:
             process_status_text = "请选择节点"
 
+        # --- A. 总览页数据 ---
         query = "SELECT id, log_time, nickname, quantity FROM logs"
         params = []
         if target_node_id:
@@ -207,6 +241,7 @@ def get_stats():
             e_str = overview_logs[-1]['log_dt'].strftime("%Y.%m.%d")
             date_range_str = s_str if s_str == e_str else f"{s_str} - {e_str}"
 
+        # --- B. 明细页数据 ---
         query_det = "SELECT id, log_time, nickname, item_type, quantity FROM logs"
         params_det = []
         if target_node_id:
@@ -221,6 +256,7 @@ def get_stats():
             if log_dt and log_dt >= cutoff_time:
                 details.append(log)
 
+        # --- C. 历史页数据 ---
         hist_sql = '''SELECT substr(l.log_time, 1, 10) as date_str, COUNT(DISTINCT l.nickname) as calc_users, SUM(l.quantity) as calc_sum, d.manual_users, d.manual_sum FROM logs l LEFT JOIN daily_overrides d ON substr(l.log_time, 1, 10) = d.date AND d.device_id = l.device_id WHERE 1=1'''
         hist_params = []
         if target_node_id:
