@@ -6,14 +6,14 @@
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="互动监控">
+    <meta name="apple-mobile-web-app-title" content="LittlePilot">
     <link rel="apple-touch-icon" href="/static/icon.png">
     <link rel="manifest" href="/manifest.json">
 
     <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 
-    <title>GePilot</title>
+    <title>LittlePilot</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
@@ -44,7 +44,7 @@
             /* 图标点击背景 */
             --icon-btn-active: rgba(0,0,0,0.05);
             
-            /* 🔥 核心修复：定义日间图标颜色 (深灰) */
+            /* 日间图标颜色 (深灰) */
             --icon-color: #1C1C1E;
         }
 
@@ -71,7 +71,7 @@
                 
                 --icon-btn-active: rgba(255,255,255,0.1);
 
-                /* 🔥 核心修复：定义夜间图标颜色 (柔和的浅灰，避免刺眼且保证可见) */
+                /* 夜间图标颜色 (柔和浅灰) */
                 --icon-color: #A0A0A0;
             }
         }
@@ -171,10 +171,9 @@
         .icon-btn { width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background-color 0.2s, transform 0.1s; user-select: none; }
         .icon-btn:active { transform: scale(0.92); background-color: var(--icon-btn-active); }
         
-        /* 🔥 核心修复：图标颜色引用新变量 */
         ion-icon { 
             font-size: 24px; 
-            color: var(--icon-color); /* 引用专用图标颜色变量 */
+            color: var(--icon-color); 
             --ionicon-stroke-width: 40px; 
         }
         
