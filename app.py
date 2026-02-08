@@ -53,7 +53,6 @@ def send_static(path): return send_from_directory('static', path)
 @app.route('/')
 def dashboard(): return render_template('dashboard.html')
 
-# 🔥 获取节点列表
 @app.route('/api/nodes')
 def get_nodes():
     conn = sqlite3.connect(DB_PATH)
@@ -64,18 +63,16 @@ def get_nodes():
     nodes = []
     now = time.time()
     for r in rows:
-        # 🔥 核心判断：15秒无心跳即视为离线
         is_online = (now - r['last_seen']) < 15
         nodes.append({
             "device_id": r['device_id'],
             "nickname": r['nickname'],
             "is_online": is_online,
-            "process_running": bool(r['process_running']) # 这是数据库记录的最后状态
+            "process_running": bool(r['process_running'])
         })
     conn.close()
     return jsonify({"nodes": nodes})
 
-# 🔥 心跳接口
 @app.route('/api/heartbeat', methods=['POST'])
 def heartbeat():
     data = request.json
@@ -115,15 +112,12 @@ def upload_file():
     device_id = request.form.get('device_id')
     nickname = request.form.get('nickname', 'Unknown')
     if not file or not device_id: return jsonify({"status": "error"}), 400
-    
     conn = sqlite3.connect(DB_PATH)
     conn.execute("REPLACE INTO devices (device_id, nickname, last_seen, process_running) VALUES (?, ?, ?, ?)", 
                  (device_id, nickname, time.time(), 1))
-    
     raw_data = file.read()
     try: content = raw_data.decode('gb18030')
     except: content = raw_data.decode('utf-8', errors='ignore')
-    
     lines = content.split('\n')
     c = conn.cursor()
     new_count = 0
@@ -152,7 +146,6 @@ def get_stats():
     c = conn.cursor()
     
     try:
-        # 🔥 核心修复：状态文案逻辑
         process_status_text = "未连接"
         is_client_online = False
         
@@ -161,22 +154,17 @@ def get_stats():
             row = c.fetchone()
             if row:
                 is_client_online = (time.time() - row['last_seen']) < 15
-                
                 if not is_client_online:
-                    # 客户端掉线了，没法知道目标程序状态 -> 报“监控离线”
-                    process_status_text = "监控离线" 
+                    process_status_text = "离线"  # 🔥 修改文案：直接显示离线
                 elif row['process_running']:
-                    # 客户端在线 + 进程跑 -> 运行中
-                    process_status_text = "运行中" 
+                    process_status_text = "运行中"
                 else:
-                    # 客户端在线 + 进程没跑 -> 未运行
-                    process_status_text = "未运行" 
+                    process_status_text = "未运行"
             else:
                 process_status_text = "未知设备"
         else:
             process_status_text = "请选择节点"
 
-        # --- A. 总览页数据 ---
         query = "SELECT id, log_time, nickname, quantity FROM logs"
         params = []
         if target_node_id:
@@ -213,7 +201,6 @@ def get_stats():
             e_str = overview_logs[-1]['log_dt'].strftime("%Y.%m.%d")
             date_range_str = s_str if s_str == e_str else f"{s_str} - {e_str}"
 
-        # --- B. 明细页数据 ---
         query_det = "SELECT id, log_time, nickname, item_type, quantity FROM logs"
         params_det = []
         if target_node_id:
@@ -228,14 +215,12 @@ def get_stats():
             if log_dt and log_dt >= cutoff_time:
                 details.append(log)
 
-        # --- C. 历史页数据 ---
         hist_sql = '''SELECT substr(l.log_time, 1, 10) as date_str, COUNT(DISTINCT l.nickname) as calc_users, SUM(l.quantity) as calc_sum, d.manual_users, d.manual_sum FROM logs l LEFT JOIN daily_overrides d ON substr(l.log_time, 1, 10) = d.date AND d.device_id = l.device_id WHERE 1=1'''
         hist_params = []
         if target_node_id:
             hist_sql += " AND l.device_id = ?"
             hist_params.append(target_node_id)
         hist_sql += " GROUP BY date_str"
-        
         c.execute(hist_sql, hist_params)
         raw_history = c.fetchall()
         history_list = []
