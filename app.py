@@ -12,8 +12,6 @@ app.jinja_env.variable_start_string = '[['
 app.jinja_env.variable_end_string = ']]'
 
 DB_PATH = '/app/data/lottery.db'
-# 🔥 改为字典，存储 { "client_id": timestamp }
-LAST_HEARTBEATS = {} 
 
 MONTH_MAP = {
     'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
@@ -39,7 +37,7 @@ def init_db():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
-    # 🔥 1. 创建 logs 表 (带 client_id)
+    # 1. 核心日志表 (存储数据) - device_id 为外键关联
     c.execute('''CREATE TABLE IF NOT EXISTS logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         log_time TEXT, 
@@ -47,21 +45,24 @@ def init_db():
         item_type TEXT, 
         quantity INTEGER, 
         unique_sign TEXT UNIQUE,
-        client_id TEXT
+        device_id TEXT
     )''')
     
-    # 🔥 2. 尝试添加 client_id 列 (兼容旧数据库)
-    try:
-        c.execute("ALTER TABLE logs ADD COLUMN client_id TEXT")
-    except: pass
+    # 2. 设备状态表 (存储元数据) - device_id 为主键
+    c.execute('''CREATE TABLE IF NOT EXISTS devices (
+        device_id TEXT PRIMARY KEY,
+        nickname TEXT,
+        last_seen REAL,
+        process_running INTEGER
+    )''')
 
-    # 🔥 3. 创建历史修正表 (联合主键: date + client_id)
+    # 3. 历史修正表 (date + device_id 联合主键)
     c.execute('''CREATE TABLE IF NOT EXISTS daily_overrides (
         date TEXT, 
-        client_id TEXT,
+        device_id TEXT,
         manual_users INTEGER, 
         manual_sum INTEGER,
-        PRIMARY KEY (date, client_id)
+        PRIMARY KEY (date, device_id)
     )''')
     
     conn.commit()
@@ -78,29 +79,44 @@ def send_static(path): return send_from_directory('static', path)
 @app.route('/')
 def dashboard(): return render_template('dashboard.html')
 
-# 🔥 获取节点列表接口
+# 🔥 获取节点列表 (读 devices 表)
 @app.route('/api/nodes')
 def get_nodes():
     conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
     c = conn.cursor()
-    # 获取所有有数据的节点
-    c.execute("SELECT DISTINCT client_id FROM logs WHERE client_id IS NOT NULL AND client_id != ''")
-    nodes = [row[0] for row in c.fetchall()]
+    c.execute("SELECT * FROM devices ORDER BY last_seen DESC")
+    rows = c.fetchall()
+    nodes = []
+    now = time.time()
+    for r in rows:
+        nodes.append({
+            "device_id": r['device_id'],
+            "nickname": r['nickname'],
+            "is_online": (now - r['last_seen']) < 15, # 15秒内有心跳算在线
+            "process_running": bool(r['process_running'])
+        })
     conn.close()
-    
-    # 加上当前在线但可能还没数据的节点
-    for node in LAST_HEARTBEATS.keys():
-        if node not in nodes: nodes.append(node)
-    
-    return jsonify({"nodes": sorted(nodes)})
+    return jsonify({"nodes": nodes})
 
+# 🔥 心跳接口：更新 devices 表
 @app.route('/api/heartbeat', methods=['POST'])
 def heartbeat():
     data = request.json
-    client_id = data.get('client_id', 'Unknown')
-    # 🔥 记录具体节点的最后在线时间
-    LAST_HEARTBEATS[client_id] = time.time()
-    return jsonify({"status": "ok"})
+    device_id = data.get('device_id')
+    nickname = data.get('nickname', 'Unknown')
+    process_running = 1 if data.get('process_running', False) else 0
+    
+    if not device_id: return jsonify({"status": "error"}), 400
+    
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        conn.execute("REPLACE INTO devices (device_id, nickname, last_seen, process_running) VALUES (?, ?, ?, ?)", 
+                     (device_id, nickname, time.time(), process_running))
+        conn.commit()
+        return jsonify({"status": "ok"})
+    except Exception as e: return jsonify({"error": str(e)}), 500
+    finally: conn.close()
 
 @app.route('/api/health', methods=['GET'])
 def health_check(): return jsonify({"status": "online", "server": "LittlePilot"})
@@ -108,11 +124,11 @@ def health_check(): return jsonify({"status": "online", "server": "LittlePilot"}
 @app.route('/api/update_history', methods=['POST'])
 def update_history():
     data = request.json
-    client_id = data.get('client_id', 'Unknown')
+    device_id = data.get('device_id')
     conn = sqlite3.connect(DB_PATH)
     try:
-        conn.execute("REPLACE INTO daily_overrides (date, client_id, manual_users, manual_sum) VALUES (?, ?, ?, ?)", 
-                     (data.get('date'), client_id, data.get('manual_users'), data.get('manual_sum')))
+        conn.execute("REPLACE INTO daily_overrides (date, device_id, manual_users, manual_sum) VALUES (?, ?, ?, ?)", 
+                     (data.get('date'), device_id, data.get('manual_users'), data.get('manual_sum')))
         conn.commit()
         return jsonify({"status": "success"})
     except Exception as e: return jsonify({"status": "error", "msg": str(e)}), 500
@@ -122,16 +138,22 @@ def update_history():
 def upload_file():
     sys.stdout.flush()
     file = request.files.get('file')
-    # 🔥 获取客户端上传的 ID
-    client_id = request.form.get('client_id', 'Unknown')
+    # 🔥 获取 device_id
+    device_id = request.form.get('device_id')
+    nickname = request.form.get('nickname', 'Unknown') # 顺便获取昵称用于更新device表
     
-    if not file: return jsonify({"status": "error"}), 400
+    if not file or not device_id: return jsonify({"status": "error"}), 400
+    
+    # 顺便更新一次心跳，防止上传大文件时掉线
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("REPLACE INTO devices (device_id, nickname, last_seen, process_running) VALUES (?, ?, ?, ?)", 
+                 (device_id, nickname, time.time(), 1)) # 上传通常意味着活着
+    
     raw_data = file.read()
     try: content = raw_data.decode('gb18030')
     except: content = raw_data.decode('utf-8', errors='ignore')
     
     lines = content.split('\n')
-    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     new_count = 0
     pattern = r"\[(.*?)\]\s+(.*?)_\d+\s+\|.*?[,，]\s*(?:.*?)[,，]\s*(\d+)"
@@ -141,41 +163,46 @@ def upload_file():
         if not line: continue 
         match = re.search(pattern, line)
         if match:
-            log_time, nickname, quantity = match.group(1), match.group(2), int(match.group(3))
-            unique_sign = f"{log_time}_{nickname}_{quantity}_{client_id}" # 🔥 唯一标识加入 client_id 防止冲突
+            log_time, nick, quantity = match.group(1), match.group(2), int(match.group(3))
+            unique_sign = f"{log_time}_{nick}_{quantity}_{device_id}" 
             try:
-                c.execute("INSERT INTO logs (log_time, nickname, item_type, quantity, unique_sign, client_id) VALUES (?, ?, ?, ?, ?, ?)", 
-                          (log_time, nickname, "钻石", quantity, unique_sign, client_id))
+                c.execute("INSERT INTO logs (log_time, nickname, item_type, quantity, unique_sign, device_id) VALUES (?, ?, ?, ?, ?, ?)", 
+                          (log_time, nick, "钻石", quantity, unique_sign, device_id))
                 new_count += 1
             except sqlite3.IntegrityError: pass 
     conn.commit()
     conn.close()
     
-    # 顺便更新一下心跳
-    LAST_HEARTBEATS[client_id] = time.time()
-    
     return jsonify({"status": "success", "new_entries": new_count})
 
 @app.route('/api/stats')
 def get_stats():
-    # 🔥 获取前端选择的节点
-    target_node = request.args.get('node')
+    # 🔥 按 device_id 过滤
+    target_node_id = request.args.get('node_id')
     
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     c = conn.cursor()
     
     try:
-        # 状态判断
-        last_seen = LAST_HEARTBEATS.get(target_node, 0)
-        is_online = (time.time() - last_seen) < 15 and target_node is not None
+        # 获取目标节点信息，用于显示“客户端运行状态”
+        process_status_text = "未连接"
+        if target_node_id:
+            c.execute("SELECT process_running FROM devices WHERE device_id = ?", (target_node_id,))
+            row = c.fetchone()
+            if row:
+                process_status_text = "运行中" if row['process_running'] else "未运行"
+            else:
+                process_status_text = "未知设备"
+        else:
+            process_status_text = "请选择节点"
 
         # --- A. 总览页数据 (带 filter) ---
         query = "SELECT id, log_time, nickname, quantity FROM logs"
         params = []
-        if target_node:
-            query += " WHERE client_id = ?"
-            params.append(target_node)
+        if target_node_id:
+            query += " WHERE device_id = ?"
+            params.append(target_node_id)
             
         c.execute(query, params)
         all_raw_logs = [dict(row) for row in c.fetchall()]
@@ -213,9 +240,9 @@ def get_stats():
         # --- B. 明细页数据 (带 filter) ---
         query_det = "SELECT id, log_time, nickname, item_type, quantity FROM logs"
         params_det = []
-        if target_node:
-            query_det += " WHERE client_id = ?"
-            params_det.append(target_node)
+        if target_node_id:
+            query_det += " WHERE device_id = ?"
+            params_det.append(target_node_id)
         query_det += " ORDER BY id DESC LIMIT 5000"
         
         c.execute(query_det, params_det)
@@ -227,17 +254,16 @@ def get_stats():
                 details.append(log)
 
         # --- C. 历史页数据 (带 filter & 联表查询) ---
-        # 这里的 SQL 需要关联 client_id
         hist_sql = '''
             SELECT substr(l.log_time, 1, 10) as date_str, COUNT(DISTINCT l.nickname) as calc_users, SUM(l.quantity) as calc_sum, d.manual_users, d.manual_sum
             FROM logs l 
-            LEFT JOIN daily_overrides d ON substr(l.log_time, 1, 10) = d.date AND d.client_id = l.client_id
+            LEFT JOIN daily_overrides d ON substr(l.log_time, 1, 10) = d.date AND d.device_id = l.device_id
             WHERE 1=1
         '''
         hist_params = []
-        if target_node:
-            hist_sql += " AND l.client_id = ?"
-            hist_params.append(target_node)
+        if target_node_id:
+            hist_sql += " AND l.device_id = ?"
+            hist_params.append(target_node_id)
             
         hist_sql += " GROUP BY date_str"
         
@@ -260,13 +286,13 @@ def get_stats():
 
     except Exception as e:
         print(f"Stats Error: {e}", flush=True)
+        process_status_text = "Error"
         total_users, total_wins, rank_list, details, history_list = 0, 0, [], [], []
         date_range_str = "Error"
-        is_online = False
     
     conn.close()
     return jsonify({
-        "client_status": "在线" if is_online else "离线",
+        "process_status": process_status_text, # 🔥 返回目标进程状态
         "total_users": total_users,
         "total_wins": total_wins,
         "rank_list": rank_list,
