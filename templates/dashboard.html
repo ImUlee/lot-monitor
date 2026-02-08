@@ -60,6 +60,8 @@
         .bg-green-g { background: linear-gradient(135deg, #34C759, #248A3D); }
         .bg-gray-g { background: linear-gradient(135deg, #8E8E93, #636366); }
         .bg-blue-g { background: var(--blue-card-bg); }
+        .bg-offline-g { background: linear-gradient(135deg, #636366, #3A3A3C); } /* 离线颜色 */
+        
         .list-row { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
         .rank-container { max-height: 60vh; overflow-y: auto; padding-right: 5px; }
         .rank-container::-webkit-scrollbar { width: 4px; }
@@ -99,12 +101,7 @@
         .text-primary { color: #007AFF !important; }
         @media (prefers-color-scheme: dark) { .text-primary { color: #0A84FF !important; } }
         
-        /* 🔥 节点页样式 */
-        .node-row {
-            display: flex; align-items: center; padding: 16px;
-            background: var(--card-bg); border-radius: 12px; margin-bottom: 10px;
-            border: 2px solid transparent; cursor: pointer; transition: all 0.2s;
-        }
+        .node-row { display: flex; align-items: center; padding: 16px; background: var(--card-bg); border-radius: 12px; margin-bottom: 10px; border: 2px solid transparent; cursor: pointer; transition: all 0.2s; }
         .node-row:active { transform: scale(0.98); }
         .node-row.selected { border-color: #007AFF; background: rgba(0,122,255,0.05); }
         .node-status-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 12px; }
@@ -137,8 +134,8 @@
                 <span class="badge bg-secondary text-white" v-if="curNodeName">{{ curNodeName }}</span>
             </div>
             
-            <div class="status-bar-card" :class="stats.process_status === '运行中' ? 'bg-green-g' : 'bg-gray-g'">
-                <div class="status-label">目标程序状态</div>
+            <div class="status-bar-card" :class="getStatusClass(stats.process_status)">
+                <div class="status-label">客户端运行状态</div>
                 <div class="status-value">
                     <div class="blink-dot" v-if="stats.process_status === '运行中'"></div>
                     {{ stats.process_status }}
@@ -202,12 +199,8 @@
 
         <transition name="fade-slide"><div v-show="curPage===4">
             <div class="page-header"><h1 class="big-title">节点选择</h1></div>
+            <div v-if="nodeList.length === 0" class="text-center text-muted py-5"><ion-icon name="server-outline" style="font-size: 48px; opacity: 0.5; margin-bottom: 10px;"></ion-icon><div>暂无节点</div></div>
             
-            <div v-if="nodeList.length === 0" class="text-center text-muted py-5">
-                <ion-icon name="server-outline" style="font-size: 48px; opacity: 0.5; margin-bottom: 10px;"></ion-icon>
-                <div>暂无在线节点</div>
-            </div>
-
             <div v-for="node in nodeList" :key="node.device_id" class="node-row" :class="{selected: curNodeId === node.device_id}" @click="selectNode(node)">
                 <div class="node-status-dot" :class="node.is_online ? 'online' : 'offline'"></div>
                 <div class="flex-grow-1">
@@ -218,8 +211,8 @@
                     <div class="text-muted small" style="font-family: monospace;">ID: {{ node.device_id.substring(0, 8) }}...</div>
                 </div>
                 <div class="text-end">
-                    <span class="badge" :class="node.process_running ? 'bg-success' : 'bg-secondary'">
-                        {{ node.process_running ? '运行中' : '未运行' }}
+                    <span class="badge" :class="!node.is_online ? 'bg-secondary' : (node.process_running ? 'bg-success' : 'bg-warning text-dark')">
+                        {{ !node.is_online ? '离线' : (node.process_running ? '运行中' : '未运行') }}
                     </span>
                 </div>
             </div>
@@ -252,8 +245,6 @@
             const editModal = ref({ show: false, type: 'history', data: { field1: '', field2: 0, field3: 0 } });
             const hideNicknames = ref(false);
             const hideHistory = ref(false);
-            
-            // 节点逻辑
             const nodeList = ref([]);
             const curNodeId = ref("");
             const curNodeName = ref("");
@@ -262,7 +253,6 @@
                 try {
                     const res = await axios.get('/api/nodes');
                     nodeList.value = res.data.nodes;
-                    // 如果没有选过，或者选中的节点不在列表中（且有列表），默认选中第一个
                     if ((!curNodeId.value) && nodeList.value.length > 0) {
                         selectNode(nodeList.value[0], false);
                     }
@@ -273,7 +263,7 @@
                 curNodeId.value = node.device_id;
                 curNodeName.value = node.nickname;
                 loadData();
-                if (jump) curPage.value = 1; // 选中后跳回首页
+                if (jump) curPage.value = 1;
             };
 
             const loadData = async () => {
@@ -282,6 +272,12 @@
                     const res = await axios.get(`/api/stats?node_id=${encodeURIComponent(curNodeId.value)}`);
                     stats.value = res.data;
                 } catch(e) { console.error(e); }
+            };
+
+            const getStatusClass = (status) => {
+                if (status === '运行中') return 'bg-green-g';
+                if (status === '离线') return 'bg-offline-g';
+                return 'bg-gray-g'; // 未运行
             };
 
             const filteredDetails = computed(() => {
@@ -325,16 +321,13 @@
                 editModal.value.show = false;
                 await loadNodes();
                 loadData();
-                setInterval(() => {
-                    loadData(); // 刷新数据
-                    loadNodes(); // 刷新节点状态
-                }, 2000);
+                setInterval(() => { loadData(); loadNodes(); }, 2000);
             });
 
             return { 
                 curPage, stats, searchText, filteredDetails, expandedDates, toggleDate,
                 editModal, closeModal, saveEdit, hideNicknames, hideHistory, handleHistoryEdit,
-                nodeList, curNodeId, curNodeName, selectNode
+                nodeList, curNodeId, curNodeName, selectNode, getStatusClass
             };
         }
     }).mount('#app');
