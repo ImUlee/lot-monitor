@@ -32,22 +32,48 @@ def parse_log_date(date_str):
         return None
     except: return None
 
+# 🔥 初始化数据库表结构
 def init_db():
+    print("🔄 Initializing Database...", flush=True)
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY AUTOINCREMENT, log_time TEXT, nickname TEXT, item_type TEXT, quantity INTEGER, unique_sign TEXT UNIQUE, device_id TEXT)''')
-    # 🔥 新增 password 字段
     c.execute('''CREATE TABLE IF NOT EXISTS devices (device_id TEXT PRIMARY KEY, nickname TEXT, last_seen REAL, process_running INTEGER, first_seen REAL, password TEXT)''')
     c.execute('''CREATE TABLE IF NOT EXISTS daily_overrides (date TEXT, device_id TEXT, manual_users INTEGER, manual_sum INTEGER, PRIMARY KEY (date, device_id))''')
     conn.commit()
     conn.close()
 
+# 🔥 核心修复：获取安全连接（自动修复缺失的数据库）
+def get_db_connection():
+    # 1. 尝试连接
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    
+    # 2. 检查表是否存在
+    try:
+        c = conn.cursor()
+        c.execute("SELECT 1 FROM devices LIMIT 1")
+    except sqlite3.OperationalError:
+        # 3. 如果报错（通常是 no such table），说明数据库被删或损坏
+        print("⚠️ Database tables missing. Re-creating...", flush=True)
+        conn.close()
+        
+        # 4. 重建表结构
+        init_db()
+        
+        # 5. 重新连接
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        
+    return conn
+
+# 启动时先运行一次
 init_db()
 
-# 🔥 更新函数：包含密码
+# 🔥 更新设备状态（带密码）
 def update_device_status(device_id, nickname, process_running, password):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection() # 使用安全连接
     c = conn.cursor()
     now = time.time()
     
@@ -72,8 +98,7 @@ def dashboard(): return render_template('dashboard.html')
 
 @app.route('/api/nodes')
 def get_nodes():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = get_db_connection() # 使用安全连接
     c = conn.cursor()
     c.execute("SELECT * FROM devices ORDER BY first_seen ASC")
     rows = c.fetchall()
@@ -86,7 +111,7 @@ def get_nodes():
             "nickname": r['nickname'],
             "is_online": is_online,
             "process_running": bool(r['process_running']),
-            "has_password": bool(r['password']) # 🔥 告诉前端是否有密码
+            "has_password": bool(r['password'])
         })
     conn.close()
     return jsonify({"nodes": nodes})
@@ -96,8 +121,9 @@ def heartbeat():
     data = request.json
     device_id = data.get('device_id')
     nickname = data.get('nickname', 'Unknown')
-    password = data.get('password', '') # 🔥 接收密码
+    password = data.get('password', '')
     process_running = 1 if data.get('process_running', False) else 0
+    
     if not device_id: return jsonify({"status": "error"}), 400
     try:
         update_device_status(device_id, nickname, process_running, password)
@@ -111,7 +137,7 @@ def health_check(): return jsonify({"status": "online", "server": "LittlePilot"}
 def update_history():
     data = request.json
     device_id = data.get('device_id')
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_db_connection() # 使用安全连接
     try:
         conn.execute("REPLACE INTO daily_overrides (date, device_id, manual_users, manual_sum) VALUES (?, ?, ?, ?)", 
                      (data.get('date'), device_id, data.get('manual_users'), data.get('manual_sum')))
@@ -139,8 +165,8 @@ def upload_file():
     try: content = raw_data.decode('gb18030')
     except: content = raw_data.decode('utf-8', errors='ignore')
     lines = content.split('\n')
-    c = conn.cursor() # 不需要
-    conn = sqlite3.connect(DB_PATH)
+    
+    conn = get_db_connection() # 使用安全连接
     c = conn.cursor()
     new_count = 0
     pattern = r"\[(.*?)\]\s+(.*?)_\d+\s+\|.*?[,，]\s*(?:.*?)[,，]\s*(\d+)"
@@ -163,10 +189,9 @@ def upload_file():
 @app.route('/api/stats')
 def get_stats():
     target_node_id = request.args.get('node_id')
-    req_password = request.args.get('password', '') # 🔥 获取前端传来的密码
+    req_password = request.args.get('password', '')
     
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = get_db_connection() # 使用安全连接
     c = conn.cursor()
     
     try:
@@ -174,24 +199,27 @@ def get_stats():
         is_client_online = False
         
         if target_node_id:
-            c.execute("SELECT last_seen, process_running, password FROM devices WHERE device_id = ?", (target_node_id,))
-            row = c.fetchone()
-            if row:
-                # 🔥 密码校验
-                db_pass = row['password']
-                if db_pass and db_pass != req_password:
-                    conn.close()
-                    return jsonify({"error": "auth_failed"}), 403
+            try:
+                c.execute("SELECT last_seen, process_running, password FROM devices WHERE device_id = ?", (target_node_id,))
+                row = c.fetchone()
+                if row:
+                    db_pass = row['password']
+                    if db_pass and db_pass != req_password:
+                        conn.close()
+                        return jsonify({"error": "auth_failed"}), 403
 
-                is_client_online = (time.time() - row['last_seen']) < 15
-                if not is_client_online:
-                    process_status_text = "离线" 
-                elif row['process_running']:
-                    process_status_text = "运行中"
+                    is_client_online = (time.time() - row['last_seen']) < 15
+                    if not is_client_online:
+                        process_status_text = "离线" 
+                    elif row['process_running']:
+                        process_status_text = "运行中"
+                    else:
+                        process_status_text = "未运行"
                 else:
-                    process_status_text = "未运行"
-            else:
-                process_status_text = "未知设备"
+                    process_status_text = "未知设备"
+            except sqlite3.OperationalError:
+                # 再次捕获，以防万一
+                process_status_text = "数据异常"
         else:
             process_status_text = "请选择节点"
 
@@ -264,6 +292,7 @@ def get_stats():
 
     except Exception as e:
         print(f"Stats Error: {e}", flush=True)
+        # 如果出错，可能是表不存在，这里也可以尝试捕获 OperationalError 并重试
         process_status_text, total_users, total_wins, rank_list, details, history_list = "Error", 0, 0, [], [], []
         date_range_str = "Error"
     
