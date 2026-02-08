@@ -115,8 +115,29 @@
         .del-btn:hover { background: rgba(255, 59, 48, 0.1); }
         .del-btn:active { transform: scale(0.9); }
         
-        .search-type-select { width: 75px !important; border-top-right-radius: 0; border-bottom-right-radius: 0; background-color: var(--input-bg); border-color: var(--input-border); color: var(--text-main); padding-right: 0; }
+        /* 🔥 精细调整：灰色字体、两端内缩、居中对齐 */
+        .search-type-select { 
+            flex: 0 0 auto !important; 
+            width: 82px !important;    
+            border-top-right-radius: 0; 
+            border-bottom-right-radius: 0; 
+            background-color: var(--input-bg); 
+            border-color: var(--input-border); 
+            
+            color: var(--text-sub) !important; /* 灰色文字 */
+            font-weight: 500;
+            
+            /* 居中 & 间距调整 */
+            text-align: center;
+            text-align-last: center; /* 兼容部分浏览器 */
+            padding-left: 8px !important; /* 左侧远离边缘 */
+            padding-right: 24px !important; /* 右侧预留箭头空间，防止文字重叠 */
+            
+            background-position: right 10px center !important; /* 箭头远离右边缘 */
+            background-size: 10px !important;
+        }
         .search-input-group input { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+        
         .checkbox-wrapper { display: flex; align-items: center; margin-bottom: 12px; margin-left: 5px; }
         .checkbox-wrapper .form-check-input { margin-top: 0; }
         .log-modal-body { flex: 1; overflow-y: auto; padding: 0 10px; }
@@ -216,12 +237,12 @@
                         <option value="nick">昵称</option>
                         <option value="date">日期</option>
                     </select>
-                    <input class="form-control" :placeholder="searchType==='nick'?'搜索昵称...':'搜索日期 (如 0208)'" v-model="searchText">
+                    <input class="form-control" placeholder="" v-model="searchText">
                 </div>
                 <div class="checkbox-wrapper">
                     <input class="form-check-input me-2" type="checkbox" id="filterSmall" v-model="filterSmallPacks">
                     <label class="form-check-label text-muted small" for="filterSmall">过滤小包 (&lt;24)</label>
-                    <span class="ms-3 text-primary fw-bold" style="font-size: 0.9rem;" v-if="filterSmallPacks">
+                    <span class="ms-auto text-primary fw-bold" style="font-size: 0.9rem;" v-if="filterSmallPacks">
                         大包总计数量：{{ filteredTotal }}
                     </span>
                 </div>
@@ -447,7 +468,6 @@
                 });
             });
 
-            // 🔥 计算大包总数
             const filteredTotal = computed(() => {
                 return filteredDetails.value.reduce((sum, item) => sum + item.quantity, 0);
             });
