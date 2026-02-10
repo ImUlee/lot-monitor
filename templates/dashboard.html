@@ -115,7 +115,6 @@
         .del-btn:hover { background: rgba(255, 59, 48, 0.1); }
         .del-btn:active { transform: scale(0.9); }
         
-        /* 🔥 精细调整：灰色字体、两端内缩、居中对齐 */
         .search-type-select { 
             flex: 0 0 auto !important; 
             width: 82px !important;    
@@ -123,30 +122,41 @@
             border-bottom-right-radius: 0; 
             background-color: var(--input-bg); 
             border-color: var(--input-border); 
-            
-            color: var(--text-sub) !important; /* 灰色文字 */
+            color: var(--text-sub) !important; /* 灰色 */
             font-weight: 500;
-            
-            /* 居中 & 间距调整 */
-            text-align: center;
-            text-align-last: center; /* 兼容部分浏览器 */
-            padding-left: 8px !important; /* 左侧远离边缘 */
-            padding-right: 24px !important; /* 右侧预留箭头空间，防止文字重叠 */
-            
-            background-position: right 10px center !important; /* 箭头远离右边缘 */
+            text-align: center; text-align-last: center;
+            padding-left: 8px !important; 
+            padding-right: 24px !important; 
+            background-position: right 10px center !important; 
             background-size: 10px !important;
         }
         .search-input-group input { border-top-left-radius: 0; border-bottom-left-radius: 0; }
-        
         .checkbox-wrapper { display: flex; align-items: center; margin-bottom: 12px; margin-left: 5px; }
         .checkbox-wrapper .form-check-input { margin-top: 0; }
         .log-modal-body { flex: 1; overflow-y: auto; padding: 0 10px; }
+
+        /* 🔥 新增：顶部渐变模糊遮罩 */
+        .top-blur-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: calc(env(safe-area-inset-top) + 30px);
+            z-index: 99;
+            pointer-events: none;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            mask-image: linear-gradient(to bottom, black 20%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, black 20%, transparent 100%);
+        }
     </style>
 </head>
 <body>
 
 <div id="app" v-cloak>
     
+    <div class="top-blur-mask"></div>
+
     <div class="custom-modal-overlay" v-if="editModal.show">
         <div class="custom-modal">
             <h5 class="fw-bold mb-3">修正历史数据</h5>
