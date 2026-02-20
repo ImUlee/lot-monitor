@@ -57,7 +57,6 @@
         
         .apple-card { background: var(--card-bg); border-radius: 24px; padding: 16px; margin-bottom: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.025); color: var(--text-main); transition: background-color 0.3s; }
         
-        /* 🔥 状态气泡的容器基础样式 */
         .status-badge {
             display: inline-flex;
             align-items: center;
@@ -75,12 +74,11 @@
             transition: all 0.3s ease;
         }
 
-        /* 🔥 各个状态的具体颜色与 10% 淡背景映射 */
         .status-running { background-color: rgba(52, 199, 89, 0.1); }
         .status-running .static-dot { background-color: #34C759; box-shadow: 0 0 6px rgba(52, 199, 89, 0.4); }
         
         .status-standby { background-color: rgba(52, 199, 89, 0.1); }
-        .status-standby .static-dot { border: 2px solid #34C759; background-color: transparent; }
+        .status-standby .static-dot { background-color: #34C759; }
         
         .status-offline { background-color: rgba(168, 168, 168, 0.1); }
         .status-offline .static-dot { background-color: #A8A8A8; }
@@ -165,15 +163,31 @@
         .text-primary { color: #007AFF !important; }
         @media (prefers-color-scheme: dark) { .text-primary { color: #0A84FF !important; } }
         
-        .node-row { display: flex; align-items: center; padding: 14px 16px; background: var(--card-bg); border-radius: 16px; margin-bottom: 8px; border: 2px solid transparent; cursor: pointer; transition: all 0.2s; }
+        /* 🔥 节点列表样式全面升级 */
+        .node-row { 
+            display: flex; 
+            align-items: center; 
+            padding: 16px 20px; /* 增加内边距 */
+            background: var(--card-bg); 
+            border-radius: 24px; /* 圆角统一为 24px */
+            margin-bottom: 12px; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+        }
         .node-row:active { transform: scale(0.98); }
-        .node-row.selected { border-color: #007AFF; background: rgba(0,122,255,0.05); }
-        .node-status-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 12px; }
+        /* 激活状态：去除边框，改为淡绿色背景 */
+        .node-row.selected { 
+            background: rgba(52, 199, 89, 0.12); 
+        }
+        /* 独立的节点小圆点样式（去除右边距，因为移到了右侧） */
+        .node-status-dot { width: 10px; height: 10px; border-radius: 50%; }
         .node-status-dot.online { background: #34C759; box-shadow: 0 0 8px rgba(52, 199, 89, 0.5); }
         .node-status-dot.offline { background: #8E8E93; }
+        
         .form-check-input { cursor: pointer; }
         .form-check-label { cursor: pointer; user-select: none; }
         
+        /* 删除按钮样式 */
         .del-btn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: 0.2s; color: #FF3B30; }
         .del-btn ion-icon { color: #FF3B30; }
         .del-btn:hover { background: rgba(255, 59, 48, 0.1); }
@@ -389,19 +403,22 @@
                 <div class="icon-btn" @click="isManageMode = !isManageMode" :class="{active: isManageMode}" title="管理节点"><ion-icon name="create-outline"></ion-icon></div>
             </div>
             <div v-if="nodeList.length === 0" class="text-center text-muted py-5"><ion-icon name="server-outline" style="font-size: 48px; opacity: 0.5; margin-bottom: 10px;"></ion-icon><div>暂无节点</div></div>
+            
             <div v-for="node in nodeList" :key="node.device_id" class="node-row" :class="{selected: curNodeId === node.device_id}" @click="selectNode(node)">
-                <div class="node-status-dot" :class="node.is_online ? 'online' : 'offline'"></div>
                 <div class="flex-grow-1">
                     <div class="d-flex align-items-center mb-1">
-                        <span class="fw-bold me-2" style="font-size: 1.05rem;">{{ node.nickname }}</span>
+                        <span class="fw-bold me-2" style="font-size: 1.1rem;">{{ node.nickname }}</span>
                         <ion-icon name="lock-closed" v-if="node.has_password" style="font-size: 14px; color: #8E8E93;"></ion-icon>
-                        <span v-if="curNodeId === node.device_id" class="badge bg-primary rounded-pill ms-2" style="font-size: 0.6rem;">当前</span>
+                        <span v-if="curNodeId === node.device_id" class="badge bg-success rounded-pill ms-2" style="font-size: 0.6rem;">当前</span>
                     </div>
                     <div class="text-muted small" style="font-family: monospace;">ID: {{ node.device_id.substring(0, 8) }}...</div>
                 </div>
+                
                 <div class="text-end d-flex align-items-center">
-                    <span class="badge me-3" :class="node.is_online ? 'bg-success' : 'bg-secondary'" v-if="!isManageMode">{{ node.is_online ? '在线' : '离线' }}</span>
-                    <div class="remove-icon-wrapper" v-if="isManageMode" @click.stop="deleteNode(node)"><ion-icon name="remove-circle"></ion-icon></div>
+                    <div class="node-status-dot" :class="node.is_online ? 'online' : 'offline'" v-if="!isManageMode"></div>
+                    <div class="del-btn" v-if="isManageMode" @click.stop="deleteNode(node)">
+                        <ion-icon name="remove-circle"></ion-icon>
+                    </div>
                 </div>
             </div>
         </div></transition>
@@ -551,13 +568,12 @@
             const getStatusText = (status) => {
                 if (!status) return '未知';
                 if (status === '运行中') return '运行';
-                if (status === '未运行') return '待机';
+                if (status === '未运行') return '在线';
                 if (status === '离线' || status === '未连接') return '离线';
                 if (status.includes('无权限')) return '无权限';
                 return status;
             };
 
-            // 🔥 新增：统一修改状态类的返回，应用在 status-badge 容器上
             const getStatusTypeClass = (status) => {
                 if (!status) return 'status-offline';
                 if (status === '运行中') return 'status-running';
