@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="LittlePilot">
     <link rel="apple-touch-icon" href="/static/icon.png">
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#f4f3f9" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
     <title>LittlePilot</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -16,25 +16,29 @@
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
     <style>
         :root {
-            --app-bg: #F2F2F7; --card-bg: #FFFFFF; --text-main: #1C1C1E; --text-sub: #8E8E93;
+            --app-bg: #f4f3f9; 
+            --card-bg: #FFFFFF; --text-main: #1C1C1E; 
+            --text-sub: #A8A8A8; 
             --border-color: #E5E5EA; --input-bg: #FFFFFF; --input-border: #E5E5EA;
-            --modal-overlay: rgba(0,0,0,0.5); --badge-bg: #F2F2F7;
+            --modal-overlay: rgba(0,0,0,0.5); 
+            --badge-bg: #f4f3f9;
             --blue-card-bg: linear-gradient(135deg, #007AFF, #0055B3);
             --nav-bg: #454545; --nav-item-bg: rgba(0, 0, 0, 0.25); 
             --nav-text-normal: rgba(255, 255, 255, 0.5); --nav-text-active: #FFFFFF;
             --nav-bg-active: rgba(255, 255, 255, 0.15);
-            --icon-btn-active: rgba(0,0,0,0.05); --icon-color: #1C1C1E;
+            --icon-btn-active: rgba(0,0,0,0.05); --icon-color: #A8A8A8;
         }
         @media (prefers-color-scheme: dark) {
             :root {
-                --app-bg: #000000; --card-bg: #1C1C1E; --text-main: #FFFFFF; --text-sub: #98989D;
+                --app-bg: #000000; --card-bg: #1C1C1E; --text-main: #FFFFFF; 
+                --text-sub: #A8A8A8; 
                 --border-color: #38383A; --input-bg: #2C2C2E; --input-border: #3A3A3C;
                 --modal-overlay: rgba(0,0,0,0.8); --badge-bg: #2C2C2E;
                 --blue-card-bg: linear-gradient(135deg, #00509E, #003366);
                 --nav-bg: rgba(118, 118, 128, 0.24); --nav-item-bg: rgba(0, 0, 0, 0.2); 
                 --nav-text-normal: rgba(255, 255, 255, 0.5); --nav-text-active: #FFFFFF;
                 --nav-bg-active: rgba(255, 255, 255, 0.15);
-                --icon-btn-active: rgba(255,255,255,0.1); --icon-color: #A0A0A0;
+                --icon-btn-active: rgba(255,255,255,0.1); --icon-color: #A8A8A8;
             }
         }
         html, body { overflow-x: hidden; width: 100%; }
@@ -45,52 +49,89 @@
         .nav-item-c { color: var(--nav-text-normal); padding: 6px 20px; border-radius: 50px; cursor: pointer; text-decoration: none; font-weight: 600; font-size: 0.95rem; transition: 0.3s; user-select: none; }
         .nav-item-c.active { background: var(--nav-bg-active); color: var(--nav-text-active); }
         .big-title { font-size: 34px; font-weight: 800; color: var(--text-main); margin: 0; letter-spacing: -0.02em; padding-left: 5px; }
+        
         .page-header { margin-top: 20px; margin-bottom: 20px; display: flex; align-items: center; min-height: 42px; }
-        .scale-container { max-width: 800px; margin: 0 auto; padding: 20px; min-height: 80vh; transform-origin: top center; }
+        
+        .scale-container { max-width: 800px; margin: 0 auto; padding: 15px; min-height: 80vh; transform-origin: top center; }
         @media (max-width: 768px) { .scale-container { transform: scale(0.96); padding-top: 10px; } }
-        .apple-card { background: var(--card-bg); border-radius: 18px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.04); color: var(--text-main); transition: background-color 0.3s; }
-        .hl-card { border-radius: 18px; color: #fff; padding: 20px; height: 130px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.3s ease; }
-        .status-bar-card { border-radius: 18px; padding: 15px 20px; color: #fff; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); transition: all 0.3s ease; }
-        .status-label { font-weight: 600; opacity: 0.9; font-size: 1rem; }
-        .status-value { font-weight: 800; font-size: 1.2rem; display: flex; align-items: center; }
-        .blink-dot { width: 10px; height: 10px; border-radius: 50%; background: #fff; margin-right: 8px; animation: blink 1.5s infinite; }
-        @keyframes blink { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
-        .hl-num { font-size: 2.2rem; font-weight: 800; line-height: 1; }
-        .bg-dark-g { background: linear-gradient(135deg, #2C2C2E, #1C1C1E); }
-        .bg-green-g { background: linear-gradient(135deg, #34C759, #248A3D); }
-        .bg-gray-g { background: linear-gradient(135deg, #8E8E93, #636366); }
-        .bg-blue-g { background: var(--blue-card-bg); }
-        .bg-offline-g { background: linear-gradient(135deg, #FF3B30, #C0392B); } 
-        .bg-lock-g { background: linear-gradient(135deg, #FF9500, #FF5E3A); }
+        
+        .apple-card { background: var(--card-bg); border-radius: 24px; padding: 16px; margin-bottom: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.025); color: var(--text-main); transition: background-color 0.3s; }
+        
+        .static-dot { 
+            width: 10px; 
+            height: 10px; 
+            border-radius: 50%; 
+            margin-right: 6px; 
+            flex-shrink: 0;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        .dot-running { background-color: #34C759; box-shadow: 0 0 6px rgba(52, 199, 89, 0.4); }
+        .dot-standby { border: 2px solid #34C759; background-color: transparent; }
+        .dot-offline { background-color: #A8A8A8; }
+        .dot-warning { background-color: #FF9500; }
+
+        .hl-card { 
+            background: var(--card-bg); 
+            border-radius: 24px; 
+            padding: 16px 12px; 
+            height: 110px; 
+            box-shadow: 0 6px 20px rgba(0,0,0,0.025); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center;  
+            justify-content: center; 
+            transition: background-color 0.3s; 
+        }
+        .hl-num { 
+            font-size: 2.4rem; 
+            font-weight: 800; 
+            line-height: 1; 
+            margin-bottom: 6px; 
+        }
+        .hl-label {
+            font-size: 0.95rem;
+            color: var(--text-sub);
+            font-weight: 500;
+        }
+        .num-account { color: var(--text-main); } 
+        .num-total { color: #5ec26b; } 
         
         .list-row { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
+        .list-row:last-child { border-bottom: none; padding-bottom: 0; }
+        
         .rank-container { max-height: 60vh; overflow-y: auto; padding-right: 5px; }
         .rank-container::-webkit-scrollbar { width: 4px; }
         .rank-container::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
-        .accordion-item { border: 1px solid var(--border-color); border-radius: 12px !important; margin-bottom: 12px; background: var(--card-bg); overflow: hidden; }
-        .accordion-header { padding: 15px 20px; background: var(--card-bg); cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; }
+        
+        .accordion-item { border: 1px solid var(--border-color); border-radius: 16px !important; margin-bottom: 10px; background: var(--card-bg); overflow: hidden; }
+        .accordion-header { padding: 12px 16px; background: var(--card-bg); cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; }
         .accordion-header:hover { background: rgba(128,128,128,0.05); }
         .accordion-header .date { font-weight: bold; font-size: 1.05rem; color: var(--text-main); }
         .accordion-header .summary { color: #007AFF; font-weight: 700; font-size: 1.1rem; }
-        .accordion-body { background: var(--app-bg); padding: 15px 20px; border-top: 1px solid var(--border-color); animation: slideIn 0.2s ease-out; position: relative; }
+        .accordion-body { background: var(--app-bg); padding: 15px 16px; border-top: 1px solid var(--border-color); animation: slideIn 0.2s ease-out; position: relative; }
         @keyframes slideIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
         .detail-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; color: var(--text-sub); }
         .text-dark-adaptive { color: #000; }
         @media (prefers-color-scheme: dark) { .text-dark-adaptive { color: #FFF; } }
         .arrow { transition: transform 0.3s; font-size: 12px; color: var(--text-sub); margin-left: 10px; display: inline-block; }
         .arrow.rotated { transform: rotate(180deg); }
+        
         .custom-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--modal-overlay); z-index: 9999; display: flex; justify-content: center; align-items: center; }
-        .custom-modal { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 16px; width: 90%; max-width: 400px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); animation: popIn 0.2s ease-out; color: var(--text-main); }
+        .custom-modal { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 24px; width: 90%; max-width: 400px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); animation: popIn 0.2s ease-out; color: var(--text-main); }
         .full-screen-modal { width: 95%; max-width: 800px; height: 90%; display: flex; flex-direction: column; }
         @keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
-        .form-control { background-color: var(--input-bg); border-color: var(--input-border); color: var(--text-main); }
+        .form-control { background-color: var(--input-bg); border-color: var(--input-border); color: var(--text-main); border-radius: 10px; }
         .form-control:focus { background-color: var(--input-bg); color: var(--text-main); border-color: #007AFF; box-shadow: 0 0 0 0.2rem rgba(0,122,255,0.25); }
         .form-control:disabled { background-color: rgba(128,128,128,0.1); color: var(--text-sub); }
         input::placeholder { color: var(--text-sub) !important; opacity: 0.7; }
         .icon-btn { width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background-color 0.2s, transform 0.1s; user-select: none; }
         .icon-btn:active { transform: scale(0.92); background-color: var(--icon-btn-active); }
         .icon-btn.active { background-color: var(--nav-bg-active); color: #007AFF; }
-        ion-icon { font-size: 24px; color: var(--icon-color); --ionicon-stroke-width: 40px; }
+        .icon-btn.active ion-icon { color: #007AFF; }
+        
+        ion-icon { font-size: 24px; color: var(--icon-color); --ionicon-stroke-width: 40px; transition: color 0.3s; }
+        
         .date-range-badge { font-size: 0.75rem; color: var(--text-sub); background: var(--badge-bg); padding: 2px 8px; border-radius: 6px; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; }
         .fade-slide-enter-active, .fade-slide-leave-active { transition: opacity 0.2s; }
         .fade-slide-enter-from, .fade-slide-leave-to { opacity: 0; display: none; }
@@ -101,9 +142,12 @@
         @media (prefers-color-scheme: dark) { th { color: var(--text-main) !important; } }
         .text-muted { color: var(--text-sub) !important; }
         .fw-bold { color: var(--text-main) !important; }
+        .nickname-text { font-weight: 500; color: var(--text-main); }
+
         .text-primary { color: #007AFF !important; }
         @media (prefers-color-scheme: dark) { .text-primary { color: #0A84FF !important; } }
-        .node-row { display: flex; align-items: center; padding: 16px; background: var(--card-bg); border-radius: 12px; margin-bottom: 10px; border: 2px solid transparent; cursor: pointer; transition: all 0.2s; }
+        
+        .node-row { display: flex; align-items: center; padding: 14px 16px; background: var(--card-bg); border-radius: 16px; margin-bottom: 8px; border: 2px solid transparent; cursor: pointer; transition: all 0.2s; }
         .node-row:active { transform: scale(0.98); }
         .node-row.selected { border-color: #007AFF; background: rgba(0,122,255,0.05); }
         .node-status-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 12px; }
@@ -111,42 +155,69 @@
         .node-status-dot.offline { background: #8E8E93; }
         .form-check-input { cursor: pointer; }
         .form-check-label { cursor: pointer; user-select: none; }
+        
         .del-btn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: 0.2s; color: #FF3B30; }
+        .del-btn ion-icon { color: #FF3B30; }
         .del-btn:hover { background: rgba(255, 59, 48, 0.1); }
         .del-btn:active { transform: scale(0.9); }
         
-        /* 🔥 精细调整：灰色字体、两端内缩、居中对齐 */
         .search-type-select { 
             flex: 0 0 auto !important; 
-            width: 82px !important;    
+            width: 90px !important;    
             border-top-right-radius: 0; 
             border-bottom-right-radius: 0; 
             background-color: var(--input-bg); 
             border-color: var(--input-border); 
-            
-            color: var(--text-sub) !important; /* 灰色文字 */
+            color: var(--text-sub) !important; 
             font-weight: 500;
-            
-            /* 居中 & 间距调整 */
-            text-align: center;
-            text-align-last: center; /* 兼容部分浏览器 */
-            padding-left: 8px !important; /* 左侧远离边缘 */
-            padding-right: 24px !important; /* 右侧预留箭头空间，防止文字重叠 */
-            
-            background-position: right 10px center !important; /* 箭头远离右边缘 */
+            text-align: center; text-align-last: center;
+            padding-left: 8px !important; 
+            padding-right: 24px !important; 
+            background-position: right 10px center !important; 
             background-size: 10px !important;
         }
         .search-input-group input { border-top-left-radius: 0; border-bottom-left-radius: 0; }
-        
         .checkbox-wrapper { display: flex; align-items: center; margin-bottom: 12px; margin-left: 5px; }
         .checkbox-wrapper .form-check-input { margin-top: 0; }
         .log-modal-body { flex: 1; overflow-y: auto; padding: 0 10px; }
+
+        .top-blur-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            /* 🔥 将基础高度从 90px 修改为 80px */
+            height: calc(env(safe-area-inset-top) + 80px);
+            z-index: 9999;
+            pointer-events: none;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(244, 243, 249, 0.8) 45%, rgba(244, 243, 249, 0) 100%);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 100%);
+            -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 100%);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        
+        .top-blur-mask.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .top-blur-mask {
+                background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(28, 28, 30, 0.8) 45%, rgba(28, 28, 30, 0) 100%);
+            }
+        }
     </style>
 </head>
 <body>
 
 <div id="app" v-cloak>
     
+    <div id="dynamic-top-mask" class="top-blur-mask"></div>
+
     <div class="custom-modal-overlay" v-if="editModal.show">
         <div class="custom-modal">
             <h5 class="fw-bold mb-3">修正历史数据</h5>
@@ -186,7 +257,7 @@
                     <tbody>
                         <tr v-for="log in historyLogsModal.logs" class="border-bottom">
                             <td class="text-muted small">{{ log.log_time.split(' ')[1] || log.log_time }}</td>
-                            <td class="fw-bold">{{ hideNicknames ? '***' : log.nickname }}</td>
+                            <td class="nickname-text">{{ hideNicknames ? '***' : log.nickname }}</td>
                             <td class="text-end fw-bold text-primary">{{ log.quantity }}</td>
                         </tr>
                     </tbody>
@@ -198,30 +269,45 @@
     <div class="scale-container">
         
         <transition name="fade-slide"><div v-show="curPage===1">
-            <div class="page-header justify-content-between">
+            
+            <div class="page-header justify-content-between align-items-center">
                 <h1 class="big-title">Today</h1>
-                <span class="badge bg-secondary text-white" v-if="curNodeName">{{ curNodeName }}</span>
-            </div>
-            <div class="status-bar-card" :class="getStatusClass(stats.process_status)">
-                <div class="status-label">程序状态</div>
-                <div class="status-value">
-                    <div class="blink-dot" v-if="stats.process_status === '运行中'"></div>
-                    {{ stats.process_status }}
+                
+                <div class="d-flex align-items-center" v-if="stats.process_status">
+                    <div class="static-dot" :class="getDotClass(stats.process_status)"></div>
+                    <span style="color: var(--text-sub); font-size: 0.95rem; font-weight: 500;">
+                        {{ getStatusText(stats.process_status) }}
+                    </span>
                 </div>
             </div>
-            <div class="row g-3 mb-4">
-                <div class="col-6"><div class="hl-card bg-dark-g"><small class="opacity-75">账号数量</small><div class="hl-num">{{ stats.total_users || 0 }}</div></div></div>
-                <div class="col-6"><div class="hl-card bg-blue-g"><small class="opacity-75">本轮累计</small><div class="hl-num">{{ stats.total_wins || 0 }}</div></div></div>
-            </div>
-            <div class="apple-card">
-                <div class="d-flex align-items-center mb-3">
-                    <h5 class="fw-bold m-0 me-2">收益排行</h5>
-                    <div class="icon-btn" @click="hideNicknames = !hideNicknames" title="隐私模式"><ion-icon :name="hideNicknames ? 'eye-off-outline' : 'eye-outline'"></ion-icon></div>
-                    <span class="date-range-badge ms-auto" v-if="stats.date_range">{{ stats.date_range }}</span>
+
+            <div class="row g-2 mb-4">
+                <div class="col-6">
+                    <div class="hl-card">
+                        <div class="hl-num num-account">{{ stats.total_users || 0 }}</div>
+                        <div class="hl-label">中奖账号数量</div>
+                    </div>
                 </div>
+                <div class="col-6">
+                    <div class="hl-card">
+                        <div class="hl-num num-total">{{ stats.total_wins || 0 }}</div>
+                        <div class="hl-label">本轮累计数量</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center mb-2 px-2">
+                <span class="fw-bold" style="font-size: 1.05rem; color: var(--text-sub);">收益排行</span>
+                <div class="icon-btn ms-1" style="width: 28px; height: 28px;" @click="hideNicknames = !hideNicknames" title="隐私模式">
+                    <ion-icon :name="hideNicknames ? 'eye-off-outline' : 'eye-outline'" style="font-size: 18px;"></ion-icon>
+                </div>
+                <span class="date-range-badge ms-auto" v-if="stats.date_range">{{ stats.date_range }}</span>
+            </div>
+
+            <div class="apple-card mt-0">
                 <div class="rank-container">
                     <div v-for="(user, i) in stats.rank_list" :key="i" class="list-row">
-                        <div class="d-flex align-items-center flex-grow-1" style="min-width: 0;"><div class="fw-bold text-truncate pe-2">{{ hideNicknames ? '***' : user.nickname }}</div></div>
+                        <div class="d-flex align-items-center flex-grow-1" style="min-width: 0;"><div class="nickname-text text-truncate pe-2">{{ hideNicknames ? '***' : user.nickname }}</div></div>
                         <div class="d-flex align-items-center"><span class="text-muted small me-3" style="font-weight: 500;">{{ user.win_times }} 次</span><span class="text-primary fw-bold" style="font-size: 1.1rem; min-width: 40px; text-align: right;">{{ user.win_sum }}</span></div>
                     </div>
                     <div v-if="stats.rank_list.length===0" class="text-center text-muted py-3">暂无数据</div>
@@ -248,8 +334,8 @@
                 </div>
                 <div style="max-height: 65vh; overflow-y: auto;">
                     <table class="table table-borderless align-middle">
-                        <thead class="small border-bottom"><tr><th style="padding-bottom: 10px;"><div class="d-flex align-items-center"><span>用户 / 时间</span><div class="icon-btn ms-1" @click="hideNicknames = !hideNicknames"><ion-icon :name="hideNicknames ? 'eye-off-outline' : 'eye-outline'" style="font-size: 20px;"></ion-icon></div></div></th><th class="text-end" style="padding-bottom: 10px;">数量</th></tr></thead>
-                        <tbody><tr v-for="item in filteredDetails" class="border-bottom"><td class="py-3"><div class="fw-bold text-truncate" style="max-width: 220px; font-size: 1rem;">{{ hideNicknames ? '***' : item.nickname }}</div><div class="text-muted small" style="font-size: 0.8rem; margin-top: 4px;">{{ item.log_time }}</div></td><td class="text-end py-3 align-middle"><span class="text-primary fw-bold" style="font-size: 1.5rem; letter-spacing: -0.5px;">{{ item.quantity }}</span></td></tr></tbody>
+                        <thead class="small border-bottom"><tr><th style="padding-bottom: 10px;"><div class="d-flex align-items-center"><span>用户 / 时间</span><div class="icon-btn ms-1" style="width:28px; height:28px;" @click="hideNicknames = !hideNicknames"><ion-icon :name="hideNicknames ? 'eye-off-outline' : 'eye-outline'" style="font-size: 18px;"></ion-icon></div></div></th><th class="text-end" style="padding-bottom: 10px;">数量</th></tr></thead>
+                        <tbody><tr v-for="item in filteredDetails" class="border-bottom"><td class="py-3"><div class="nickname-text text-truncate" style="max-width: 220px; font-size: 1rem;">{{ hideNicknames ? '***' : item.nickname }}</div><div class="text-muted small" style="font-size: 0.8rem; margin-top: 4px;">{{ item.log_time }}</div></td><td class="text-end py-3 align-middle"><span class="text-primary fw-bold" style="font-size: 1.5rem; letter-spacing: -0.5px;">{{ item.quantity }}</span></td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -341,6 +427,7 @@
             const changeTab = (page) => {
                 curPage.value = page;
                 isManageMode.value = false;
+                window.scrollTo({ top: 0, behavior: 'smooth' }); 
             };
 
             const loadNodes = async () => {
@@ -441,11 +528,22 @@
                 finally { historyLogsModal.value.loading = false; }
             };
 
-            const getStatusClass = (status) => {
-                if (status === '运行中') return 'bg-green-g';
-                if (status === '离线') return 'bg-offline-g';
-                if (status === '🔒 无权限') return 'bg-lock-g';
-                return 'bg-gray-g';
+            const getStatusText = (status) => {
+                if (!status) return '未知';
+                if (status === '运行中') return '运行';
+                if (status === '未运行') return '待机';
+                if (status === '离线' || status === '未连接') return '离线';
+                if (status.includes('无权限')) return '无权限';
+                return status;
+            };
+
+            const getDotClass = (status) => {
+                if (!status) return 'dot-offline';
+                if (status === '运行中') return 'dot-running';
+                if (status === '未运行') return 'dot-standby';
+                if (status === '离线' || status === '未连接') return 'dot-offline';
+                if (status.includes('无权限')) return 'dot-warning';
+                return 'dot-offline';
             };
 
             const filteredDetails = computed(() => {
@@ -502,6 +600,19 @@
 
             onMounted(async () => {
                 editModal.value.show = false;
+                
+                const topMask = document.getElementById('dynamic-top-mask');
+                if (topMask) {
+                    window.addEventListener('scroll', () => {
+                        const st = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+                        if (st > 15) {
+                            topMask.classList.add('show');
+                        } else {
+                            topMask.classList.remove('show');
+                        }
+                    }, { passive: true });
+                }
+
                 await loadNodes();
                 loadData();
                 setInterval(() => { 
@@ -517,7 +628,8 @@
                 editModal, authModal, historyLogsModal, viewHistoryLogs,
                 closeModal, saveEdit, confirmPassword,
                 hideNicknames, hideHistory, handleHistoryEdit, deleteNode,
-                nodeList, curNodeId, curNodeName, selectNode, getStatusClass, isManageMode
+                nodeList, curNodeId, curNodeName, selectNode, isManageMode,
+                getStatusText, getDotClass 
             };
         }
     }).mount('#app');
