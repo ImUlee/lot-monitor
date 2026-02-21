@@ -58,13 +58,10 @@
         
         .apple-card { background: var(--card-bg); border-radius: 24px; padding: 16px; margin-bottom: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.025); color: var(--text-main); transition: background-color 0.3s; }
         
+        /* 🔥 去除描边和多余内边距，呈现极简状态 */
         .status-badge {
             display: inline-flex;
             align-items: center;
-            padding: 2px 8px;
-            border-radius: 50px;
-            border: 2px solid transparent; 
-            background-color: transparent; 
             transition: all 0.3s ease;
             font-size: 0.85rem;
             font-weight: 600;
@@ -79,16 +76,16 @@
             transition: all 0.3s ease;
         }
 
-        .status-running { border-color: rgba(52, 199, 89, 0.3); color: #34C759; }
+        .status-running { color: #34C759; }
         .status-running .static-dot { background-color: #34C759; box-shadow: 0 0 6px rgba(52, 199, 89, 0.4); }
         
-        .status-standby { border-color: rgba(52, 199, 89, 0.3); color: #34C759; }
+        .status-standby { color: #34C759; }
         .status-standby .static-dot { background-color: #34C759; }
         
-        .status-offline { border-color: rgba(168, 168, 168, 0.3); color: #A8A8A8; }
+        .status-offline { color: #A8A8A8; }
         .status-offline .static-dot { background-color: #A8A8A8; }
         
-        .status-warning { border-color: rgba(255, 149, 0, 0.3); color: #FF9500; }
+        .status-warning { color: #FF9500; }
         .status-warning .static-dot { background-color: #FF9500; }
 
         .hl-card { 
@@ -125,7 +122,6 @@
         .rank-container::-webkit-scrollbar { width: 4px; }
         .rank-container::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
         
-        /* 🔥 去除历史卡片的描边，并增加悬浮阴影，统一 iOS 无边框质感 */
         .accordion-item { border: none; border-radius: 16px !important; margin-bottom: 12px; background: var(--card-bg); overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,0.025); }
         .accordion-header { padding: 12px 16px; background: var(--card-bg); cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; }
         .accordion-header:hover { background: rgba(128,128,128,0.05); }
@@ -169,9 +165,10 @@
         .text-primary { color: #007AFF !important; }
         @media (prefers-color-scheme: dark) { .text-primary { color: #0A84FF !important; } }
         
+        /* 🔥 节点列表样式：选中时采用背景色（卡片色），配以绿色边框 */
         .node-row { display: flex; align-items: center; padding: 16px 20px; background: var(--card-bg); border-radius: 24px; margin-bottom: 12px; border: 2px solid transparent; cursor: pointer; transition: all 0.2s; }
         .node-row:active { transform: scale(0.98); }
-        .node-row.selected { background: rgba(52, 199, 89, 0.12); }
+        .node-row.selected { background: var(--card-bg); border-color: #34C759; }
         
         .node-status-dot { width: 10px; height: 10px; border-radius: 50%; margin: 0; }
         .node-status-dot.online { background: #34C759; box-shadow: 0 0 8px rgba(52, 199, 89, 0.5); }
@@ -403,7 +400,7 @@
                         <tbody><tr v-for="item in filteredDetails" class="border-bottom"><td class="py-3">
                             <div class="nickname-text text-truncate" style="max-width: 220px;">{{ hideNicknames ? '***' : item.nickname }}</div>
                             <div class="text-muted small" style="font-size: 0.75rem; margin-top: 4px;">{{ item.log_time }}</div>
-                        </td><td class="text-end py-3 align-middle"><span class="text-primary fw-bold" style="font-size: 1.4rem; letter-spacing: -0.5px;">{{ item.quantity }}</span></td></tr></tbody>
+                        </td><td class="text-end py-3 align-middle"><span class="text-primary fw-bold" style="font-size: 1.1rem; min-width: 40px; text-align: right;">{{ item.quantity }}</span></td></tr></tbody>
                     </table>
                 </div>
             </div>
