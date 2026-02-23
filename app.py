@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, render_template
 
 app = Flask(__name__)
-DB_FILE = 'data.db'
+DB_FILE = 'lottery.db'
 ROUND_SETTINGS_FILE = 'round_settings.json'
 
 # ==========================================
