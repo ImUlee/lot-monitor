@@ -19,7 +19,8 @@
             --app-bg: #f4f3f9; 
             --card-bg: #FFFFFF; --text-main: #1C1C1E; 
             --text-sub: #A8A8A8; 
-            --border-color: #E5E5EA; --input-bg: #FFFFFF; --input-border: #E5E5EA;
+            --border-color: #e5e5ea; 
+            --input-bg: #FFFFFF; --input-border: #e5e5ea;
             --modal-overlay: rgba(0,0,0,0.5); 
             --badge-bg: #f4f3f9;
             --blue-card-bg: linear-gradient(135deg, #007AFF, #0055B3);
@@ -57,6 +58,17 @@
         
         .apple-card { background: var(--card-bg); border-radius: 24px; padding: 16px; margin-bottom: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.025); color: var(--text-main); transition: background-color 0.3s; }
         
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 50px;
+            border: 2px solid transparent; 
+            background-color: transparent; 
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
         .static-dot { 
             width: 10px; 
             height: 10px; 
@@ -66,10 +78,18 @@
             box-sizing: border-box;
             transition: all 0.3s ease;
         }
-        .dot-running { background-color: #34C759; box-shadow: 0 0 6px rgba(52, 199, 89, 0.4); }
-        .dot-standby { border: 2px solid #34C759; background-color: transparent; }
-        .dot-offline { background-color: #A8A8A8; }
-        .dot-warning { background-color: #FF9500; }
+
+        .status-running { border-color: rgba(52, 199, 89, 0.3); color: #34C759; }
+        .status-running .static-dot { background-color: #34C759; box-shadow: 0 0 6px rgba(52, 199, 89, 0.4); }
+        
+        .status-standby { border-color: rgba(52, 199, 89, 0.3); color: #34C759; }
+        .status-standby .static-dot { background-color: #34C759; }
+        
+        .status-offline { border-color: rgba(168, 168, 168, 0.3); color: #A8A8A8; }
+        .status-offline .static-dot { background-color: #A8A8A8; }
+        
+        .status-warning { border-color: rgba(255, 149, 0, 0.3); color: #FF9500; }
+        .status-warning .static-dot { background-color: #FF9500; }
 
         .hl-card { 
             background: var(--card-bg); 
@@ -87,10 +107,11 @@
             font-size: 2.4rem; 
             font-weight: 800; 
             line-height: 1; 
-            margin-bottom: 6px; 
+            margin-bottom: 6px;
+            font-family: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; 
         }
         .hl-label {
-            font-size: 0.95rem;
+            font-size: 0.85rem;
             color: var(--text-sub);
             font-weight: 500;
         }
@@ -104,11 +125,11 @@
         .rank-container::-webkit-scrollbar { width: 4px; }
         .rank-container::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
         
-        .accordion-item { border: 1px solid var(--border-color); border-radius: 16px !important; margin-bottom: 10px; background: var(--card-bg); overflow: hidden; }
+        .accordion-item { border: none; border-radius: 16px !important; margin-bottom: 12px; background: var(--card-bg); overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,0.025); }
         .accordion-header { padding: 12px 16px; background: var(--card-bg); cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; }
         .accordion-header:hover { background: rgba(128,128,128,0.05); }
         .accordion-header .date { font-weight: bold; font-size: 1.05rem; color: var(--text-main); }
-        .accordion-header .summary { color: #007AFF; font-weight: 700; font-size: 1.1rem; }
+        .accordion-header .summary { color: #007AFF; font-weight: 700; font-size: 1.05rem; }
         .accordion-body { background: var(--app-bg); padding: 15px 16px; border-top: 1px solid var(--border-color); animation: slideIn 0.2s ease-out; position: relative; }
         @keyframes slideIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
         .detail-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; color: var(--text-sub); }
@@ -135,50 +156,33 @@
         .date-range-badge { font-size: 0.75rem; color: var(--text-sub); background: var(--badge-bg); padding: 2px 8px; border-radius: 6px; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; }
         .fade-slide-enter-active, .fade-slide-leave-active { transition: opacity 0.2s; }
         .fade-slide-enter-from, .fade-slide-leave-to { opacity: 0; display: none; }
-        .table { --bs-table-bg: transparent; color: var(--text-main); }
+        
+        .table { --bs-table-bg: transparent; --bs-table-color: var(--text-main); color: var(--text-main); }
         .table-borderless td, .table-borderless th { border: none; }
         .border-bottom { border-bottom: 1px solid var(--border-color) !important; }
         th { white-space: nowrap; color: var(--text-sub); font-weight: 600; }
         @media (prefers-color-scheme: dark) { th { color: var(--text-main) !important; } }
         .text-muted { color: var(--text-sub) !important; }
         .fw-bold { color: var(--text-main) !important; }
-        .nickname-text { font-weight: 500; color: var(--text-main); }
+        
+        .nickname-text { font-weight: 400; font-size: 0.95rem; color: var(--text-main) !important; }
 
         .text-primary { color: #007AFF !important; }
         @media (prefers-color-scheme: dark) { .text-primary { color: #0A84FF !important; } }
         
-        .node-row { display: flex; align-items: center; padding: 14px 16px; background: var(--card-bg); border-radius: 16px; margin-bottom: 8px; border: 2px solid transparent; cursor: pointer; transition: all 0.2s; }
+        .node-row { display: flex; align-items: center; padding: 16px 20px; background: var(--card-bg); border-radius: 24px; margin-bottom: 12px; border: 2px solid transparent; cursor: pointer; transition: all 0.2s; }
         .node-row:active { transform: scale(0.98); }
-        .node-row.selected { border-color: #007AFF; background: rgba(0,122,255,0.05); }
-        .node-status-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 12px; }
+        .node-row.selected { background: var(--card-bg); border-color: #34C759; }
+        
+        .node-status-dot { width: 10px; height: 10px; border-radius: 50%; margin: 0; }
         .node-status-dot.online { background: #34C759; box-shadow: 0 0 8px rgba(52, 199, 89, 0.5); }
         .node-status-dot.offline { background: #8E8E93; }
-        .form-check-input { cursor: pointer; }
-        .form-check-label { cursor: pointer; user-select: none; }
         
         .del-btn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: 0.2s; color: #FF3B30; }
         .del-btn ion-icon { color: #FF3B30; }
         .del-btn:hover { background: rgba(255, 59, 48, 0.1); }
         .del-btn:active { transform: scale(0.9); }
         
-        .search-type-select { 
-            flex: 0 0 auto !important; 
-            width: 90px !important;    
-            border-top-right-radius: 0; 
-            border-bottom-right-radius: 0; 
-            background-color: var(--input-bg); 
-            border-color: var(--input-border); 
-            color: var(--text-sub) !important; 
-            font-weight: 500;
-            text-align: center; text-align-last: center;
-            padding-left: 8px !important; 
-            padding-right: 24px !important; 
-            background-position: right 10px center !important; 
-            background-size: 10px !important;
-        }
-        .search-input-group input { border-top-left-radius: 0; border-bottom-left-radius: 0; }
-        .checkbox-wrapper { display: flex; align-items: center; margin-bottom: 12px; margin-left: 5px; }
-        .checkbox-wrapper .form-check-input { margin-top: 0; }
         .log-modal-body { flex: 1; overflow-y: auto; padding: 0 10px; }
 
         .top-blur-mask {
@@ -186,29 +190,76 @@
             top: 0;
             left: 0;
             right: 0;
-            /* 🔥 将基础高度从 90px 修改为 80px */
             height: calc(env(safe-area-inset-top) + 80px);
             z-index: 9999;
             pointer-events: none;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(244, 243, 249, 0.8) 45%, rgba(244, 243, 249, 0) 100%);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 100%);
-            -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 100%);
+            background: linear-gradient(to bottom, rgba(0,0,0,0.02) 0%, rgba(244, 243, 249, 0.5) 30%, rgba(244, 243, 249, 0) 100%);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 100%);
+            -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 100%);
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.3s ease, visibility 0.3s ease;
         }
         
-        .top-blur-mask.show {
-            opacity: 1;
-            visibility: visible;
-        }
+        .top-blur-mask.show { opacity: 1; visibility: visible; }
 
         @media (prefers-color-scheme: dark) {
-            .top-blur-mask {
-                background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(28, 28, 30, 0.8) 45%, rgba(28, 28, 30, 0) 100%);
-            }
+            .top-blur-mask { background: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0, 0, 0, 0.6) 30%, rgba(0, 0, 0, 0) 100%); }
+        }
+
+        .ios-search-bar {
+            display: flex;
+            align-items: center;
+            background: rgba(118, 118, 128, 0.12);
+            border-radius: 12px;
+            padding: 0 12px;
+            height: 40px;
+            margin-bottom: 16px;
+        }
+        @media (prefers-color-scheme: dark) { .ios-search-bar { background: rgba(118, 118, 128, 0.24); } }
+        
+        .ios-search-icon { color: var(--text-sub); font-size: 18px; margin-right: 6px; }
+        
+        .ios-search-select {
+            border: none;
+            background: transparent;
+            color: var(--text-main);
+            font-weight: 500;
+            font-size: 0.95rem;
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+            padding: 0;
+        }
+        
+        .ios-search-divider { width: 1px; height: 16px; background: var(--text-sub); opacity: 0.3; margin: 0 12px; }
+        
+        .ios-search-input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            color: var(--text-main);
+            font-size: 0.95rem;
+            outline: none;
+            min-width: 0;
+        }
+        .ios-search-input::placeholder { color: var(--text-sub); }
+        
+        .clear-icon { color: var(--text-sub); font-size: 18px; cursor: pointer; opacity: 0.6; transition: 0.2s; }
+        .clear-icon:active { opacity: 1; }
+
+        .filter-summary-card {
+            background: var(--app-bg);
+            border-radius: 12px;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            border: 1px solid var(--border-color);
         }
     </style>
 </head>
@@ -271,13 +322,16 @@
         <transition name="fade-slide"><div v-show="curPage===1">
             
             <div class="page-header justify-content-between align-items-center">
-                <h1 class="big-title">Today</h1>
+                <div class="d-flex align-items-center">
+                    <h1 class="big-title pe-2">Today</h1>
+                    <div class="icon-btn" @click="resetRound" title="重新开始新一轮" style="width: 28px; height: 28px;">
+                        <ion-icon name="refresh-outline" style="font-size: 18px;"></ion-icon>
+                    </div>
+                </div>
                 
-                <div class="d-flex align-items-center" v-if="stats.process_status">
-                    <div class="static-dot" :class="getDotClass(stats.process_status)"></div>
-                    <span style="color: var(--text-sub); font-size: 0.95rem; font-weight: 500;">
-                        {{ getStatusText(stats.process_status) }}
-                    </span>
+                <div class="status-badge" :class="getStatusTypeClass(stats.process_status)" v-if="stats.process_status">
+                    <div class="static-dot"></div>
+                    <span>{{ getStatusText(stats.process_status) }}</span>
                 </div>
             </div>
 
@@ -285,20 +339,20 @@
                 <div class="col-6">
                     <div class="hl-card">
                         <div class="hl-num num-account">{{ stats.total_users || 0 }}</div>
-                        <div class="hl-label">中奖账号数量</div>
+                        <div class="hl-label">账号数量</div>
                     </div>
                 </div>
                 <div class="col-6">
                     <div class="hl-card">
                         <div class="hl-num num-total">{{ stats.total_wins || 0 }}</div>
-                        <div class="hl-label">本轮累计数量</div>
+                        <div class="hl-label">本轮产出</div>
                     </div>
                 </div>
             </div>
 
             <div class="d-flex align-items-center mb-2 px-2">
-                <span class="fw-bold" style="font-size: 1.05rem; color: var(--text-sub);">收益排行</span>
-                <div class="icon-btn ms-1" style="width: 28px; height: 28px;" @click="hideNicknames = !hideNicknames" title="隐私模式">
+                <span class="fw-bold" style="font-size: 1.4rem; color: var(--text-main); letter-spacing: -0.01em;">收益排行</span>
+                <div class="icon-btn ms-2" style="width: 28px; height: 28px;" @click="hideNicknames = !hideNicknames" title="隐私模式">
                     <ion-icon :name="hideNicknames ? 'eye-off-outline' : 'eye-outline'" style="font-size: 18px;"></ion-icon>
                 </div>
                 <span class="date-range-badge ms-auto" v-if="stats.date_range">{{ stats.date_range }}</span>
@@ -316,26 +370,46 @@
         </div></transition>
 
         <transition name="fade-slide"><div v-show="curPage===2">
-            <div class="page-header"><h1 class="big-title">日志明细</h1></div>
-            <div class="apple-card">
-                <div class="input-group mb-2 search-input-group">
-                    <select class="form-select search-type-select" v-model="searchType">
+            
+            <div class="page-header justify-content-between align-items-center">
+                <h1 class="big-title">日志明细</h1>
+                <div class="d-flex align-items-center">
+                    <div class="icon-btn" :class="{ 'active': filterSmallPacks }" @click="filterSmallPacks = !filterSmallPacks" title="过滤小包 (<24)">
+                        <ion-icon :name="filterSmallPacks ? 'funnel' : 'funnel-outline'"></ion-icon>
+                    </div>
+                </div>
+            </div>
+
+            <div class="apple-card mt-0">
+                
+                <div class="ios-search-bar">
+                    <ion-icon name="search" class="ios-search-icon"></ion-icon>
+                    <select class="ios-search-select" v-model="searchType">
                         <option value="nick">昵称</option>
                         <option value="date">日期</option>
                     </select>
-                    <input class="form-control" placeholder="" v-model="searchText">
+                    <ion-icon name="chevron-down" style="font-size: 12px; color: var(--text-sub); margin-left: 2px; pointer-events: none;"></ion-icon>
+                    
+                    <div class="ios-search-divider"></div>
+                    
+                    <input type="text" class="ios-search-input" placeholder="输入搜索内容..." v-model="searchText">
+                    <ion-icon name="close-circle" class="clear-icon" v-show="searchText" @click="searchText = ''"></ion-icon>
                 </div>
-                <div class="checkbox-wrapper">
-                    <input class="form-check-input me-2" type="checkbox" id="filterSmall" v-model="filterSmallPacks">
-                    <label class="form-check-label text-muted small" for="filterSmall">过滤小包 (&lt;24)</label>
-                    <span class="ms-auto text-primary fw-bold" style="font-size: 0.9rem;" v-if="filterSmallPacks">
-                        大包总计数量：{{ filteredTotal }}
-                    </span>
-                </div>
+
+                <transition name="fade-slide">
+                    <div class="filter-summary-card" v-if="filterSmallPacks">
+                        <span class="text-muted fw-bold" style="font-size: 0.9rem;">大包总计数量 <span style="font-weight: 400; font-size: 0.8rem;">(已过滤小包)</span></span>
+                        <span class="text-primary fw-bold" style="font-size: 1.2rem;">{{ filteredTotal }}</span>
+                    </div>
+                </transition>
+
                 <div style="max-height: 65vh; overflow-y: auto;">
-                    <table class="table table-borderless align-middle">
+                    <table class="table table-borderless align-middle m-0">
                         <thead class="small border-bottom"><tr><th style="padding-bottom: 10px;"><div class="d-flex align-items-center"><span>用户 / 时间</span><div class="icon-btn ms-1" style="width:28px; height:28px;" @click="hideNicknames = !hideNicknames"><ion-icon :name="hideNicknames ? 'eye-off-outline' : 'eye-outline'" style="font-size: 18px;"></ion-icon></div></div></th><th class="text-end" style="padding-bottom: 10px;">数量</th></tr></thead>
-                        <tbody><tr v-for="item in filteredDetails" class="border-bottom"><td class="py-3"><div class="nickname-text text-truncate" style="max-width: 220px; font-size: 1rem;">{{ hideNicknames ? '***' : item.nickname }}</div><div class="text-muted small" style="font-size: 0.8rem; margin-top: 4px;">{{ item.log_time }}</div></td><td class="text-end py-3 align-middle"><span class="text-primary fw-bold" style="font-size: 1.5rem; letter-spacing: -0.5px;">{{ item.quantity }}</span></td></tr></tbody>
+                        <tbody><tr v-for="item in filteredDetails" class="border-bottom"><td class="py-3">
+                            <div class="nickname-text text-truncate" style="max-width: 220px;">{{ hideNicknames ? '***' : item.nickname }}</div>
+                            <div class="text-muted small" style="font-size: 0.75rem; margin-top: 4px;">{{ item.log_time }}</div>
+                        </td><td class="text-end py-3 align-middle"><span class="text-primary fw-bold" style="font-size: 1.1rem; min-width: 40px; text-align: right;">{{ item.quantity }}</span></td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -369,19 +443,22 @@
                 <div class="icon-btn" @click="isManageMode = !isManageMode" :class="{active: isManageMode}" title="管理节点"><ion-icon name="create-outline"></ion-icon></div>
             </div>
             <div v-if="nodeList.length === 0" class="text-center text-muted py-5"><ion-icon name="server-outline" style="font-size: 48px; opacity: 0.5; margin-bottom: 10px;"></ion-icon><div>暂无节点</div></div>
+            
             <div v-for="node in nodeList" :key="node.device_id" class="node-row" :class="{selected: curNodeId === node.device_id}" @click="selectNode(node)">
-                <div class="node-status-dot" :class="node.is_online ? 'online' : 'offline'"></div>
                 <div class="flex-grow-1">
                     <div class="d-flex align-items-center mb-1">
-                        <span class="fw-bold me-2" style="font-size: 1.1rem;">{{ node.nickname }}</span>
+                        <span class="fw-bold me-2" style="font-size: 1.05rem;">{{ node.nickname }}</span>
                         <ion-icon name="lock-closed" v-if="node.has_password" style="font-size: 14px; color: #8E8E93;"></ion-icon>
-                        <span v-if="curNodeId === node.device_id" class="badge bg-primary rounded-pill ms-2" style="font-size: 0.6rem;">当前</span>
+                        <span v-if="curNodeId === node.device_id" class="badge bg-success rounded-pill ms-2" style="font-size: 0.6rem;">当前</span>
                     </div>
                     <div class="text-muted small" style="font-family: monospace;">ID: {{ node.device_id.substring(0, 8) }}...</div>
                 </div>
-                <div class="text-end d-flex align-items-center">
-                    <span class="badge me-3" :class="node.is_online ? 'bg-success' : 'bg-secondary'" v-if="!isManageMode">{{ node.is_online ? '在线' : '离线' }}</span>
-                    <div class="remove-icon-wrapper" v-if="isManageMode" @click.stop="deleteNode(node)"><ion-icon name="remove-circle"></ion-icon></div>
+                
+                <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; flex-shrink: 0;">
+                    <div class="node-status-dot" :class="node.is_online ? 'online' : 'offline'" v-if="!isManageMode"></div>
+                    <div class="del-btn w-100 h-100" v-if="isManageMode" @click.stop="deleteNode(node)">
+                        <ion-icon name="remove-circle"></ion-icon>
+                    </div>
                 </div>
             </div>
         </div></transition>
@@ -516,6 +593,19 @@
                 }
             };
 
+            const resetRound = async () => {
+                if (!curNodeId.value) return;
+                const confirmed = confirm("确认要开启新一轮统计吗？\n当前的展示数据将会清零，但不会影响历史页面的长期数据记录。");
+                if (!confirmed) return;
+                
+                try {
+                    await axios.post('/api/reset_round', { device_id: curNodeId.value });
+                    await loadData();
+                } catch(e) {
+                    alert("重置失败，请检查后端接口是否已部署");
+                }
+            };
+
             const viewHistoryLogs = async (date) => {
                 historyLogsModal.value.date = date;
                 historyLogsModal.value.show = true;
@@ -531,19 +621,19 @@
             const getStatusText = (status) => {
                 if (!status) return '未知';
                 if (status === '运行中') return '运行';
-                if (status === '未运行') return '待机';
+                if (status === '未运行') return '在线';
                 if (status === '离线' || status === '未连接') return '离线';
                 if (status.includes('无权限')) return '无权限';
                 return status;
             };
 
-            const getDotClass = (status) => {
-                if (!status) return 'dot-offline';
-                if (status === '运行中') return 'dot-running';
-                if (status === '未运行') return 'dot-standby';
-                if (status === '离线' || status === '未连接') return 'dot-offline';
-                if (status.includes('无权限')) return 'dot-warning';
-                return 'dot-offline';
+            const getStatusTypeClass = (status) => {
+                if (!status) return 'status-offline';
+                if (status === '运行中') return 'status-running';
+                if (status === '未运行') return 'status-standby';
+                if (status === '离线' || status === '未连接') return 'status-offline';
+                if (status.includes('无权限')) return 'status-warning';
+                return 'status-offline';
             };
 
             const filteredDetails = computed(() => {
@@ -555,8 +645,8 @@
                     if (!rawSearch) return true;
 
                     if (searchType.value === 'nick') {
-                        const cleanNick = i.nickname.replace(/\s+/g, '');
-                        const cleanSearch = rawSearch.replace(/\s+/g, '');
+                        const cleanNick = i.nickname.replace(/\s+/g, '').toLowerCase();
+                        const cleanSearch = rawSearch.replace(/\s+/g, '').toLowerCase();
                         return cleanNick.includes(cleanSearch);
                     } else {
                         const logDate = i.log_time.substring(0, 10).replace(/\D/g, ''); 
@@ -629,7 +719,7 @@
                 closeModal, saveEdit, confirmPassword,
                 hideNicknames, hideHistory, handleHistoryEdit, deleteNode,
                 nodeList, curNodeId, curNodeName, selectNode, isManageMode,
-                getStatusText, getDotClass 
+                getStatusText, getStatusTypeClass, resetRound 
             };
         }
     }).mount('#app');

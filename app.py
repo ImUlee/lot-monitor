@@ -1,321 +1,337 @@
-from flask import Flask, request, jsonify, render_template, send_from_directory
-import sqlite3
-import re
 import os
-import sys
-import time
+import json
+import sqlite3
 from datetime import datetime, timedelta
+from flask import Flask, request, jsonify, render_template
 
 app = Flask(__name__)
+DB_FILE = 'data.db'
+ROUND_SETTINGS_FILE = 'round_settings.json'
 
-app.jinja_env.variable_start_string = '[['
-app.jinja_env.variable_end_string = ']]'
+# ==========================================
+# ⚙️ 轮次时间持久化配置 (保证重启不丢失清空状态)
+# ==========================================
+def load_round_times():
+    """从本地文件加载每个节点的重置时间"""
+    if os.path.exists(ROUND_SETTINGS_FILE):
+        try:
+            with open(ROUND_SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
 
-DB_PATH = '/app/data/lottery.db'
+def save_round_times(data):
+    """将重置时间保存到本地文件"""
+    with open(ROUND_SETTINGS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
 
-MONTH_MAP = {
-    'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'May': 5, 'Jun': 6,
-    'Jul': 7, 'Aug': 8, 'Sep': 9, 'Oct': 10, 'Nov': 11, 'Dec': 12
-}
+# 全局变量，存储各节点的本轮起始时间: {"node_123": "2023-10-25 15:30:00"}
+round_start_times = load_round_times()
 
-def parse_log_date(date_str):
-    try:
-        date_str = date_str.strip()
-        if '/' in date_str and re.search(r'[a-zA-Z]', date_str):
-            parts = date_str.split()
-            d_parts = parts[0].split('/')
-            t_parts = parts[1].split(':')
-            return datetime(int(d_parts[2]), MONTH_MAP.get(d_parts[1], 0), int(d_parts[0]), int(t_parts[0]), int(t_parts[1]), int(t_parts[2]))
-        if '-' in date_str: return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
-        if '/' in date_str: return datetime.strptime(date_str, "%Y/%m/%d %H:%M:%S")
-        if '.' in date_str: return datetime.strptime(date_str, "%Y.%m.%d %H:%M:%S")
-        return None
-    except: return None
+
+# ==========================================
+# 🗄️ 数据库初始化与连接
+# ==========================================
+def get_db_connection():
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def init_db():
-    print("🔄 Initializing Database...", flush=True)
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY AUTOINCREMENT, log_time TEXT, nickname TEXT, item_type TEXT, quantity INTEGER, unique_sign TEXT UNIQUE, device_id TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS devices (device_id TEXT PRIMARY KEY, nickname TEXT, last_seen REAL, process_running INTEGER, first_seen REAL, password TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS daily_overrides (date TEXT, device_id TEXT, manual_users INTEGER, manual_sum INTEGER, PRIMARY KEY (date, device_id))''')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    # 节点表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS nodes (
+            device_id TEXT PRIMARY KEY,
+            nickname TEXT,
+            password TEXT,
+            status TEXT DEFAULT '未运行',
+            last_active DATETIME
+        )
+    ''')
+    # 日志表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id TEXT,
+            nickname TEXT,
+            quantity INTEGER,
+            log_time DATETIME
+        )
+    ''')
+    # 历史修正表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS history_manual (
+            device_id TEXT,
+            date TEXT,
+            manual_sum INTEGER,
+            manual_users INTEGER,
+            PRIMARY KEY (device_id, date)
+        )
+    ''')
     conn.commit()
     conn.close()
-
-def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    try:
-        c = conn.cursor()
-        c.execute("SELECT 1 FROM devices LIMIT 1")
-    except sqlite3.OperationalError:
-        print("⚠️ Database tables missing. Re-creating...", flush=True)
-        conn.close()
-        init_db()
-        conn = sqlite3.connect(DB_PATH)
-        conn.row_factory = sqlite3.Row
-    return conn
 
 init_db()
 
-def update_device_status(device_id, nickname, process_running, password):
+# ==========================================
+# 🌐 页面路由
+# ==========================================
+@app.route('/')
+def index():
+    return render_template('dashboard.html')
+
+# ==========================================
+# 🔌 API 路由
+# ==========================================
+
+@app.route('/api/nodes', methods=['GET'])
+def get_nodes():
+    """获取所有节点列表及在线状态"""
     conn = get_db_connection()
-    c = conn.cursor()
-    now = time.time()
-    c.execute("UPDATE devices SET nickname=?, last_seen=?, process_running=?, password=? WHERE device_id=?", 
-              (nickname, now, process_running, password, device_id))
-    if c.rowcount == 0:
-        c.execute("INSERT INTO devices (device_id, nickname, last_seen, process_running, first_seen, password) VALUES (?, ?, ?, ?, ?, ?)", 
-                  (device_id, nickname, now, process_running, now, password))
-    conn.commit()
+    cursor = conn.cursor()
+    cursor.execute("SELECT device_id, nickname, password, last_active, status FROM nodes ORDER BY last_active DESC")
+    rows = cursor.fetchall()
     conn.close()
 
-@app.route('/manifest.json')
-def serve_manifest(): return send_from_directory('static', 'manifest.json', mimetype='application/json')
-@app.route('/sw.js')
-def serve_sw(): return send_from_directory('static', 'sw.js', mimetype='application/javascript')
-@app.route('/static/<path:path>')
-def send_static(path): return send_from_directory('static', path)
-@app.route('/')
-def dashboard(): return render_template('dashboard.html')
-
-@app.route('/api/nodes')
-def get_nodes():
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute("SELECT * FROM devices ORDER BY first_seen ASC")
-    rows = c.fetchall()
     nodes = []
-    now = time.time()
+    now = datetime.now()
     for r in rows:
-        is_online = (now - r['last_seen']) < 15
+        # 判断是否在线 (假设 5 分钟内有活动视为在线)
+        is_online = False
+        if r['last_active']:
+            last_active_time = datetime.strptime(r['last_active'], '%Y-%m-%d %H:%M:%S')
+            if (now - last_active_time).total_seconds() < 300:
+                is_online = True
+
         nodes.append({
             "device_id": r['device_id'],
-            "nickname": r['nickname'],
-            "is_online": is_online,
-            "process_running": bool(r['process_running']),
-            "has_password": bool(r['password'])
+            "nickname": r['nickname'] or r['device_id'][:8],
+            "has_password": bool(r['password']),
+            "is_online": is_online
         })
-    conn.close()
     return jsonify({"nodes": nodes})
+
 
 @app.route('/api/node/delete', methods=['POST'])
 def delete_node():
-    data = request.json
-    device_id = data.get('device_id')
-    if not device_id: return jsonify({"status": "error"}), 400
-    conn = get_db_connection()
-    try:
-        conn.execute("DELETE FROM devices WHERE device_id = ?", (device_id,))
-        conn.commit()
-        return jsonify({"status": "success"})
-    except Exception as e: return jsonify({"error": str(e)}), 500
-    finally: conn.close()
-
-# 🔥 新增：获取指定日期的历史详细日志
-@app.route('/api/history_logs')
-def get_history_logs():
-    target_node_id = request.args.get('node_id')
-    target_date = request.args.get('date') # 格式 YYYY-MM-DD
+    """删除节点及其所有数据"""
+    device_id = request.json.get('device_id')
+    if not device_id:
+        return jsonify({"error": "Missing device_id"}), 400
     
-    if not target_node_id or not target_date:
-        return jsonify({"logs": []})
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM nodes WHERE device_id = ?", (device_id,))
+    cursor.execute("DELETE FROM logs WHERE device_id = ?", (device_id,))
+    cursor.execute("DELETE FROM history_manual WHERE device_id = ?", (device_id,))
+    conn.commit()
+    conn.close()
+    
+    # 清理内存中的重置时间记录
+    if device_id in round_start_times:
+        del round_start_times[device_id]
+        save_round_times(round_start_times)
+
+    return jsonify({"status": "success"})
+
+
+@app.route('/api/reset_round', methods=['POST'])
+def reset_round():
+    """手动开启新一轮，刷新 Today 数据显示"""
+    device_id = request.json.get('device_id')
+    if not device_id:
+        return jsonify({"status": "error", "message": "Missing device_id"}), 400
+        
+    now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    round_start_times[device_id] = now_str
+    save_round_times(round_start_times)
+    
+    return jsonify({"status": "success", "round_start_time": now_str})
+
+
+@app.route('/api/stats', methods=['GET'])
+def get_stats():
+    device_id = request.args.get('node_id')
+    password = request.args.get('password', '')
+    
+    if not device_id:
+        return jsonify({"error": "Missing node_id"}), 400
 
     conn = get_db_connection()
-    c = conn.cursor()
-    try:
-        # 支持 YYYY-MM-DD 和 YYYY/MM/DD 两种格式匹配
-        target_date_slash = target_date.replace('-', '/')
+    cursor = conn.cursor()
+
+    # 1. 验证节点和密码
+    cursor.execute("SELECT password, status, last_active FROM nodes WHERE device_id = ?", (device_id,))
+    node = cursor.fetchone()
+    if not node:
+        conn.close()
+        return jsonify({"error": "Node not found"}), 404
         
-        # 模糊查询当天所有记录
-        query = """
-            SELECT log_time, nickname, quantity 
+    if node['password'] and node['password'] != password:
+        conn.close()
+        return jsonify({"error": "Forbidden"}), 403
+
+    process_status = node['status']
+    if node['last_active']:
+        last_active_time = datetime.strptime(node['last_active'], '%Y-%m-%d %H:%M:%S')
+        if (datetime.now() - last_active_time).total_seconds() >= 300:
+            process_status = "离线"
+
+    # ==========================================
+    # 🔥 核心升级：跨天自由轮次 + 48小时保底逻辑
+    # ==========================================
+    now = datetime.now()
+    start_of_today = now.strftime('%Y-%m-%d 00:00:00')
+    
+    # 设定 48 小时的极限边界
+    limit_48h = (now - timedelta(hours=48)).strftime('%Y-%m-%d %H:%M:%S')
+
+    if device_id in round_start_times:
+        node_round_start = round_start_times[device_id]
+        # 如果手动重置过，取【重置时间】和【48小时前】中较晚的一个
+        # 效果：哪怕跨越了午夜 12 点，数据依然会保留；但最长不会显示超过 48 小时的数据。
+        effective_start_time = max(limit_48h, node_round_start)
+    else:
+        # 如果这个节点从来没点过重置，默认只看今天的
+        effective_start_time = max(limit_48h, start_of_today)
+
+    try:
+        # --- 获取 本轮 实时数据 ---
+        cursor.execute('''
+            SELECT nickname, log_time, quantity 
+            FROM logs 
+            WHERE device_id = ? AND log_time >= ?
+            ORDER BY log_time DESC
+        ''', (device_id, effective_start_time))
+        details = [dict(row) for row in cursor.fetchall()]
+        
+        cursor.execute('''
+            SELECT nickname, COUNT(*) as win_times, SUM(quantity) as win_sum 
+            FROM logs 
+            WHERE device_id = ? AND log_time >= ?
+            GROUP BY nickname 
+            ORDER BY win_sum DESC
+        ''', (device_id, effective_start_time))
+        ranks = [dict(row) for row in cursor.fetchall()]
+        
+        total_users = len(ranks)
+        total_wins = sum(row['quantity'] for row in details)
+
+        # --- 获取 历史数据 (完全不受影响，依然按天结算) ---
+        cursor.execute('''
+            SELECT 
+                substr(log_time, 1, 10) as date, 
+                COUNT(DISTINCT nickname) as user_count, 
+                SUM(quantity) as daily_sum 
             FROM logs 
             WHERE device_id = ? 
-            AND (log_time LIKE ? OR log_time LIKE ?)
-            ORDER BY id DESC
-        """
-        c.execute(query, (target_node_id, f"{target_date}%", f"{target_date_slash}%"))
-        rows = [dict(row) for row in c.fetchall()]
-        return jsonify({"logs": rows})
+            GROUP BY date 
+            ORDER BY date DESC
+            LIMIT 30
+        ''', (device_id,))
+        raw_history = cursor.fetchall()
+        
+        # 获取人工修正数据
+        cursor.execute('SELECT date, manual_sum, manual_users FROM history_manual WHERE device_id = ?', (device_id,))
+        manual_records = {row['date']: row for row in cursor.fetchall()}
+
+        history_data = []
+        today_date = now.strftime('%Y-%m-%d')
+        for row in raw_history:
+            date_str = row['date']
+            # 今天的数据不放入“历史记录”列表中
+            if date_str == today_date:
+                continue
+                
+            manual = manual_records.get(date_str)
+            if manual:
+                history_data.append({
+                    "date": date_str,
+                    "user_count": manual['manual_users'],
+                    "daily_sum": manual['manual_sum'],
+                    "is_manual": True
+                })
+            else:
+                history_data.append({
+                    "date": date_str,
+                    "user_count": row['user_count'],
+                    "daily_sum": row['daily_sum'],
+                    "is_manual": False
+                })
+
+        # 🔥 格式化给前端显示的时间范围：截取 MM-DD HH:MM (例如 "10-25 23:00")
+        display_time = effective_start_time[5:16]
+
+        return jsonify({
+            "process_status": process_status,
+            "total_users": total_users,
+            "total_wins": total_wins,
+            "date_range": f"{display_time} - 至今",  # 传给前端显示
+            "rank_list": ranks,
+            "details": details,
+            "history_data": history_data
+        })
+
     except Exception as e:
-        print(f"History Logs Error: {e}")
-        return jsonify({"logs": []})
+        print(f"Stats Error: {e}")
+        return jsonify({"error": "Database query failed"}), 500
     finally:
         conn.close()
 
-@app.route('/api/heartbeat', methods=['POST'])
-def heartbeat():
-    data = request.json
-    device_id = data.get('device_id')
-    nickname = data.get('nickname', 'Unknown')
-    password = data.get('password', '')
-    process_running = 1 if data.get('process_running', False) else 0
-    if not device_id: return jsonify({"status": "error"}), 400
-    try:
-        update_device_status(device_id, nickname, process_running, password)
-        return jsonify({"status": "ok"})
-    except Exception as e: return jsonify({"error": str(e)}), 500
 
-@app.route('/api/health', methods=['GET'])
-def health_check(): return jsonify({"status": "online", "server": "LittlePilot"})
+@app.route('/api/history_logs', methods=['GET'])
+def get_history_logs():
+    """获取指定历史日期的详细记录"""
+    device_id = request.args.get('node_id')
+    date_str = request.args.get('date')
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT log_time, nickname, quantity 
+        FROM logs 
+        WHERE device_id = ? AND substr(log_time, 1, 10) = ?
+        ORDER BY log_time DESC
+    ''', (device_id, date_str))
+    logs = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return jsonify({"logs": logs})
+
 
 @app.route('/api/update_history', methods=['POST'])
 def update_history():
+    """手动修正历史数据"""
     data = request.json
     device_id = data.get('device_id')
+    date_str = data.get('date')
+    manual_sum = data.get('manual_sum')
+    manual_users = data.get('manual_users')
+    
+    if not all([device_id, date_str]):
+        return jsonify({"error": "Missing parameters"}), 400
+        
     conn = get_db_connection()
-    try:
-        conn.execute("REPLACE INTO daily_overrides (date, device_id, manual_users, manual_sum) VALUES (?, ?, ?, ?)", 
-                     (data.get('date'), device_id, data.get('manual_users'), data.get('manual_sum')))
-        conn.commit()
-        return jsonify({"status": "success"})
-    except Exception as e: return jsonify({"status": "error", "msg": str(e)}), 500
-    finally: conn.close()
-
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    sys.stdout.flush()
-    file = request.files.get('file')
-    device_id = request.form.get('device_id')
-    nickname = request.form.get('nickname', 'Unknown')
-    password = request.form.get('password', '')
-    process_status_str = request.form.get('process_running', 'False')
-    process_running = 1 if process_status_str == 'True' else 0
-    
-    if not file or not device_id: return jsonify({"status": "error"}), 400
-    
-    update_device_status(device_id, nickname, process_running, password)
-    
-    raw_data = file.read()
-    try: content = raw_data.decode('gb18030')
-    except: content = raw_data.decode('utf-8', errors='ignore')
-    lines = content.split('\n')
-    conn = get_db_connection()
-    c = conn.cursor()
-    new_count = 0
-    pattern = r"\[(.*?)\]\s+(.*?)_\d+\s+\|.*?[,，]\s*(?:.*?)[,，]\s*(\d+)"
-    for line in lines:
-        line = line.strip()
-        if not line: continue 
-        match = re.search(pattern, line)
-        if match:
-            log_time, nick, quantity = match.group(1), match.group(2), int(match.group(3))
-            unique_sign = f"{log_time}_{nick}_{quantity}_{device_id}" 
-            try:
-                c.execute("INSERT INTO logs (log_time, nickname, item_type, quantity, unique_sign, device_id) VALUES (?, ?, ?, ?, ?, ?)", 
-                          (log_time, nick, "钻石", quantity, unique_sign, device_id))
-                new_count += 1
-            except sqlite3.IntegrityError: pass 
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO history_manual (device_id, date, manual_sum, manual_users)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(device_id, date) DO UPDATE SET
+        manual_sum = excluded.manual_sum,
+        manual_users = excluded.manual_users
+    ''', (device_id, date_str, manual_sum, manual_users))
     conn.commit()
     conn.close()
-    return jsonify({"status": "success", "new_entries": new_count})
-
-@app.route('/api/stats')
-def get_stats():
-    target_node_id = request.args.get('node_id')
-    req_password = request.args.get('password', '')
-    conn = get_db_connection()
-    c = conn.cursor()
-    try:
-        process_status_text = "未连接"
-        is_client_online = False
-        if target_node_id:
-            try:
-                c.execute("SELECT last_seen, process_running, password FROM devices WHERE device_id = ?", (target_node_id,))
-                row = c.fetchone()
-                if row:
-                    db_pass = row['password']
-                    if db_pass and db_pass != req_password:
-                        conn.close()
-                        return jsonify({"error": "auth_failed"}), 403
-                    is_client_online = (time.time() - row['last_seen']) < 15
-                    if not is_client_online: process_status_text = "离线" 
-                    elif row['process_running']: process_status_text = "运行中"
-                    else: process_status_text = "未运行"
-                else: process_status_text = "未知设备"
-            except sqlite3.OperationalError: process_status_text = "数据异常"
-        else: process_status_text = "请选择节点"
-
-        query = "SELECT id, log_time, nickname, quantity FROM logs"
-        params = []
-        if target_node_id:
-            query += " WHERE device_id = ?"
-            params.append(target_node_id)
-        c.execute(query, params)
-        all_raw_logs = [dict(row) for row in c.fetchall()]
-
-        now = datetime.now()
-        cutoff_time = now - timedelta(hours=48)
-        
-        overview_logs = []
-        for log in all_raw_logs:
-            log_dt = parse_log_date(log['log_time'])
-            if log_dt and log_dt >= cutoff_time:
-                overview_logs.append({ "nickname": log['nickname'], "quantity": log['quantity'], "log_dt": log_dt })
-
-        total_users = len(set(l['nickname'] for l in overview_logs))
-        total_wins = sum(l['quantity'] for l in overview_logs)
-        
-        rank_map = {}
-        for l in overview_logs:
-            if l['nickname'] not in rank_map: rank_map[l['nickname']] = {"win_times": 0, "win_sum": 0}
-            rank_map[l['nickname']]["win_times"] += 1
-            rank_map[l['nickname']]["win_sum"] += l['quantity']
-        
-        rank_list = [{"nickname": k, "win_times": v["win_times"], "win_sum": v["win_sum"]} for k, v in rank_map.items()]
-        rank_list.sort(key=lambda x: x['win_sum'], reverse=True)
-
-        date_range_str = "暂无数据"
-        if overview_logs:
-            overview_logs.sort(key=lambda x: x['log_dt'])
-            s_str = overview_logs[0]['log_dt'].strftime("%Y.%m.%d")
-            e_str = overview_logs[-1]['log_dt'].strftime("%Y.%m.%d")
-            date_range_str = s_str if s_str == e_str else f"{s_str} - {e_str}"
-
-        query_det = "SELECT id, log_time, nickname, item_type, quantity FROM logs"
-        params_det = []
-        if target_node_id:
-            query_det += " WHERE device_id = ?"
-            params_det.append(target_node_id)
-        query_det += " ORDER BY id DESC LIMIT 5000"
-        c.execute(query_det, params_det)
-        raw_details = [dict(row) for row in c.fetchall()]
-        details = []
-        for log in raw_details:
-            log_dt = parse_log_date(log['log_time'])
-            if log_dt and log_dt >= cutoff_time:
-                details.append(log)
-
-        hist_sql = '''SELECT substr(l.log_time, 1, 10) as date_str, COUNT(DISTINCT l.nickname) as calc_users, SUM(l.quantity) as calc_sum, d.manual_users, d.manual_sum FROM logs l LEFT JOIN daily_overrides d ON substr(l.log_time, 1, 10) = d.date AND d.device_id = l.device_id WHERE 1=1'''
-        hist_params = []
-        if target_node_id:
-            hist_sql += " AND l.device_id = ?"
-            hist_params.append(target_node_id)
-        hist_sql += " GROUP BY date_str"
-        c.execute(hist_sql, hist_params)
-        raw_history = c.fetchall()
-        history_list = []
-        for row in raw_history:
-            final_users = row['manual_users'] if row['manual_users'] is not None else row['calc_users']
-            final_sum = row['manual_sum'] if row['manual_sum'] is not None else row['calc_sum']
-            dt = parse_log_date(row['date_str'] + " 00:00:00")
-            sort_key = dt if dt else datetime.min
-            history_list.append({ "date": row['date_str'], "user_count": final_users, "daily_sum": final_sum, "is_manual": row['manual_users'] is not None, "sort_key": sort_key })
-        history_list.sort(key=lambda x: x['sort_key'], reverse=True)
-
-    except Exception as e:
-        print(f"Stats Error: {e}", flush=True)
-        process_status_text, total_users, total_wins, rank_list, details, history_list = "Error", 0, 0, [], [], []
-        date_range_str = "Error"
     
-    conn.close()
-    return jsonify({
-        "process_status": process_status_text, 
-        "total_users": total_users, "total_wins": total_wins, "rank_list": rank_list,
-        "date_range": date_range_str, "details": details, "history_data": history_list
-    })
+    return jsonify({"status": "success"})
 
+
+# ==========================================
+# 🚀 启动服务
+# ==========================================
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    # 确保保存 JSON 的目录可写
+    app.run(host='0.0.0.0', port=5000, debug=True)
