@@ -58,10 +58,13 @@
         
         .apple-card { background: var(--card-bg); border-radius: 24px; padding: 16px; margin-bottom: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.025); color: var(--text-main); transition: background-color 0.3s; }
         
-        /* 🔥 去除描边和多余内边距，呈现极简状态 */
         .status-badge {
             display: inline-flex;
             align-items: center;
+            padding: 2px 8px;
+            border-radius: 50px;
+            border: 2px solid transparent; 
+            background-color: transparent; 
             transition: all 0.3s ease;
             font-size: 0.85rem;
             font-weight: 600;
@@ -76,16 +79,16 @@
             transition: all 0.3s ease;
         }
 
-        .status-running { color: #34C759; }
+        .status-running { border-color: rgba(52, 199, 89, 0.3); color: #34C759; }
         .status-running .static-dot { background-color: #34C759; box-shadow: 0 0 6px rgba(52, 199, 89, 0.4); }
         
-        .status-standby { color: #34C759; }
+        .status-standby { border-color: rgba(52, 199, 89, 0.3); color: #34C759; }
         .status-standby .static-dot { background-color: #34C759; }
         
-        .status-offline { color: #A8A8A8; }
+        .status-offline { border-color: rgba(168, 168, 168, 0.3); color: #A8A8A8; }
         .status-offline .static-dot { background-color: #A8A8A8; }
         
-        .status-warning { color: #FF9500; }
+        .status-warning { border-color: rgba(255, 149, 0, 0.3); color: #FF9500; }
         .status-warning .static-dot { background-color: #FF9500; }
 
         .hl-card { 
@@ -161,12 +164,12 @@
         @media (prefers-color-scheme: dark) { th { color: var(--text-main) !important; } }
         .text-muted { color: var(--text-sub) !important; }
         .fw-bold { color: var(--text-main) !important; }
-        .nickname-text { font-weight: 400; font-size: 0.95rem; color: var(--text-main); }
+        
+        .nickname-text { font-weight: 400; font-size: 0.95rem; color: var(--text-main) !important; }
 
         .text-primary { color: #007AFF !important; }
         @media (prefers-color-scheme: dark) { .text-primary { color: #0A84FF !important; } }
         
-        /* 🔥 节点列表样式：选中时采用背景色（卡片色），配以绿色边框 */
         .node-row { display: flex; align-items: center; padding: 16px 20px; background: var(--card-bg); border-radius: 24px; margin-bottom: 12px; border: 2px solid transparent; cursor: pointer; transition: all 0.2s; }
         .node-row:active { transform: scale(0.98); }
         .node-row.selected { background: var(--card-bg); border-color: #34C759; }
@@ -262,6 +265,7 @@
 </head>
 <body>
 
+{% raw %}
 <div id="app" v-cloak>
     
     <div id="dynamic-top-mask" class="top-blur-mask"></div>
@@ -319,7 +323,12 @@
         <transition name="fade-slide"><div v-show="curPage===1">
             
             <div class="page-header justify-content-between align-items-center">
-                <h1 class="big-title">Today</h1>
+                <div class="d-flex align-items-center">
+                    <h1 class="big-title pe-2" style="font-size: 28px;">本轮概览</h1>
+                    <div class="icon-btn" @click="resetRound" title="重新开始新一轮" style="width: 28px; height: 28px;">
+                        <ion-icon name="refresh-outline" style="font-size: 18px;"></ion-icon>
+                    </div>
+                </div>
                 
                 <div class="status-badge" :class="getStatusTypeClass(stats.process_status)" v-if="stats.process_status">
                     <div class="static-dot"></div>
@@ -466,6 +475,7 @@
         </div>
     </nav>
 </div>
+{% endraw %}
 
 <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
@@ -711,7 +721,7 @@
                 closeModal, saveEdit, confirmPassword,
                 hideNicknames, hideHistory, handleHistoryEdit, deleteNode,
                 nodeList, curNodeId, curNodeName, selectNode, isManageMode,
-                getStatusText, getStatusTypeClass 
+                getStatusText, getStatusTypeClass, resetRound 
             };
         }
     }).mount('#app');
