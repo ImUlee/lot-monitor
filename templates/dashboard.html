@@ -58,13 +58,10 @@
         
         .apple-card { background: var(--card-bg); border-radius: 24px; padding: 16px; margin-bottom: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.025); color: var(--text-main); transition: background-color 0.3s; }
         
+        /* 🔥 极简状态点：彻底去除所有描边、内边距，化繁为简 */
         .status-badge {
             display: inline-flex;
             align-items: center;
-            padding: 2px 8px;
-            border-radius: 50px;
-            border: 2px solid transparent; 
-            background-color: transparent; 
             transition: all 0.3s ease;
             font-size: 0.85rem;
             font-weight: 600;
@@ -79,16 +76,13 @@
             transition: all 0.3s ease;
         }
 
-        .status-running { border-color: rgba(52, 199, 89, 0.3); color: #34C759; }
+        .status-running { color: #34C759; }
         .status-running .static-dot { background-color: #34C759; box-shadow: 0 0 6px rgba(52, 199, 89, 0.4); }
-        
-        .status-standby { border-color: rgba(52, 199, 89, 0.3); color: #34C759; }
+        .status-standby { color: #34C759; }
         .status-standby .static-dot { background-color: #34C759; }
-        
-        .status-offline { border-color: rgba(168, 168, 168, 0.3); color: #A8A8A8; }
+        .status-offline { color: #A8A8A8; }
         .status-offline .static-dot { background-color: #A8A8A8; }
-        
-        .status-warning { border-color: rgba(255, 149, 0, 0.3); color: #FF9500; }
+        .status-warning { color: #FF9500; }
         .status-warning .static-dot { background-color: #FF9500; }
 
         .hl-card { 
@@ -261,15 +255,63 @@
             margin-bottom: 16px;
             border: 1px solid var(--border-color);
         }
+
+        .user-select-row { padding: 14px 12px; border-radius: 10px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--border-color); }
+        .user-select-row:last-child { border-bottom: none; }
+        .user-select-row:active { background: var(--icon-btn-active); transform: scale(0.98); }
+
+        /* 🔥 新增日期选择器样式 */
+        .ios-date-input {
+            flex: 1;
+            background: rgba(118, 118, 128, 0.12);
+            border: none;
+            color: var(--text-main);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            padding: 8px 10px;
+            outline: none;
+        }
+        @media (prefers-color-scheme: dark) {
+            .ios-date-input::-webkit-calendar-picker-indicator { filter: invert(1); }
+        }
     </style>
 </head>
 <body>
 
 {% raw %}
-
 <div id="app" v-cloak>
     
     <div id="dynamic-top-mask" class="top-blur-mask"></div>
+
+    <div class="custom-modal-overlay" v-if="userFilterModal.show">
+        <div class="custom-modal">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold m-0">历史筛选</h5>
+                <div class="icon-btn" @click="userFilterModal.show = false"><ion-icon name="close"></ion-icon></div>
+            </div>
+            
+            <div class="mb-3 d-flex align-items-center gap-2">
+                <input type="date" class="ios-date-input" v-model="userFilterModal.startDate" title="起始日期">
+                <span class="text-muted small">至</span>
+                <input type="date" class="ios-date-input" v-model="userFilterModal.endDate" title="结束日期">
+            </div>
+
+            <div class="ios-search-bar mb-2">
+                <ion-icon name="search" class="ios-search-icon"></ion-icon>
+                <input type="text" class="ios-search-input" placeholder="输入搜索昵称..." v-model="userFilterModal.searchText">
+                <ion-icon name="close-circle" class="clear-icon" v-show="userFilterModal.searchText" @click="userFilterModal.searchText = ''"></ion-icon>
+            </div>
+            
+            <div style="max-height: 40vh; overflow-y: auto; padding-right: 5px;">
+                <div v-if="userFilterModal.loading" class="text-center py-4 text-muted">加载中...</div>
+                <div v-else-if="filteredUserList.length === 0" class="text-center py-4 text-muted">无匹配用户</div>
+                <div v-for="user in filteredUserList" :key="user" class="user-select-row d-flex justify-content-between align-items-center" @click="applyUserFilter(user)">
+                    <span class="nickname-text fw-bold">{{ hideNicknames ? '***' : user }}</span>
+                    <ion-icon name="chevron-forward" style="font-size: 16px; color: var(--text-sub); opacity: 0.5;"></ion-icon>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="custom-modal-overlay" v-if="editModal.show">
         <div class="custom-modal">
@@ -423,8 +465,29 @@
                 <div class="d-flex align-items-center gap-1">
                     <div class="icon-btn" @click="hideHistory = !hideHistory" title="隐私开关"><ion-icon :name="hideHistory ? 'eye-off-outline' : 'eye-outline'"></ion-icon></div>
                     <div class="icon-btn" @click="handleHistoryEdit" title="修改展开项"><ion-icon name="create-outline"></ion-icon></div>
+                    <div class="icon-btn" @click="openUserFilter" :class="{ 'active': historyFilterUser }" title="筛选指定用户">
+                        <ion-icon :name="historyFilterUser ? 'funnel' : 'funnel-outline'"></ion-icon>
+                    </div>
                 </div>
             </div>
+
+            <transition name="fade-slide">
+                <div class="filter-summary-card mb-3" v-if="historyFilterUser" style="background: linear-gradient(135deg, rgba(0,122,255,0.08), rgba(52,199,89,0.05)); border: 1px solid rgba(0,122,255,0.2);">
+                    <div>
+                        <span class="text-muted fw-bold" style="font-size: 0.85rem;">累计产出 <span style="font-weight: 500; font-size: 0.75rem; color: var(--text-sub);">({{ historyFilterDateRange }})</span></span>
+                        <div class="nickname-text mt-1 fw-bold" style="font-size: 1.1rem; color: var(--text-main);">
+                            {{ hideNicknames ? '***' : historyFilterUser }}
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <span class="text-primary fw-bold me-3" style="font-size: 1.8rem; font-family: ui-rounded, 'SF Pro Rounded', sans-serif;">{{ historyFilterTotal }}</span>
+                        <div class="icon-btn" style="width: 28px; height: 28px; background: rgba(0,0,0,0.05);" @click="clearUserFilter" title="清除筛选">
+                            <ion-icon name="close" style="font-size: 16px; color: var(--text-main);"></ion-icon>
+                        </div>
+                    </div>
+                </div>
+            </transition>
+
             <div v-if="!stats.history_data || stats.history_data.length===0" class="text-center text-muted py-5">暂无历史数据</div>
             <div class="accordion-item" v-for="day in stats.history_data" :key="day.date">
                 <div class="accordion-header" @click="toggleDate(day.date)">
@@ -476,7 +539,6 @@
         </div>
     </nav>
 </div>
-
 {% endraw %}
 
 <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
@@ -496,6 +558,21 @@
             const editModal = ref({ show: false, data: { field1: '', field2: 0, field3: 0 } });
             const authModal = ref({ show: false, password: "", remember: false, targetNode: null }); 
             const historyLogsModal = ref({ show: false, loading: false, date: "", logs: [] });
+            
+            const historyFilterUser = ref("");
+            const historyFilterTotal = ref(0);
+            const historyFilterDateRange = ref("");
+            
+            // 🔥 新增：用户筛选弹窗数据结构（含时间边界）
+            const userFilterModal = ref({ 
+                show: false, 
+                loading: false, 
+                users: [], 
+                searchText: "",
+                startDate: "", 
+                endDate: "" 
+            });
+
             const hideNicknames = ref(false);
             const hideHistory = ref(false);
             const nodeList = ref([]);
@@ -527,21 +604,28 @@
                 if (isManageMode.value) return; 
                 isAuthError.value = false;
                 localStorage.setItem('last_node_id', node.device_id);
+                
+                curNodeId.value = node.device_id;
+                curNodeName.value = node.nickname;
+                clearUserFilter();
+
                 const savedPass = localStorage.getItem(`pwd_${node.device_id}`);
                 
                 if (node.has_password) {
                     if (savedPass) {
                         curPassword.value = savedPass;
-                        performSwitch(node);
+                        loadData();
                     } else {
+                        curPassword.value = "";
                         authModal.value.targetNode = node;
                         authModal.value.password = "";
                         authModal.value.remember = false;
                         authModal.value.show = true;
+                        stats.value = { process_status: "🔒 无权限", total_users: 0, total_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" };
                     }
                 } else {
                     curPassword.value = "";
-                    performSwitch(node);
+                    loadData();
                 }
             };
 
@@ -551,12 +635,7 @@
                     localStorage.setItem(`pwd_${authModal.value.targetNode.device_id}`, authModal.value.password);
                 }
                 authModal.value.show = false;
-                performSwitch(authModal.value.targetNode);
-            };
-
-            const performSwitch = (node) => {
-                curNodeId.value = node.device_id;
-                curNodeName.value = node.nickname;
+                isAuthError.value = false; 
                 loadData();
             };
 
@@ -587,10 +666,15 @@
                         if (!isAuthError.value) {
                             alert("密码错误，请重新输入");
                             isAuthError.value = true;
+                            curPassword.value = ""; 
                             if (localStorage.getItem(`pwd_${curNodeId.value}`)) {
                                 localStorage.removeItem(`pwd_${curNodeId.value}`);
-                                const node = nodeList.value.find(n => n.device_id === curNodeId.value);
-                                if (node) selectNode(node);
+                            }
+                            const node = nodeList.value.find(n => n.device_id === curNodeId.value);
+                            if (node) {
+                                authModal.value.targetNode = node;
+                                authModal.value.password = "";
+                                authModal.value.show = true;
                             }
                         }
                     }
@@ -608,6 +692,63 @@
                 } catch(e) {
                     alert("重置失败，请检查后端接口是否已部署");
                 }
+            };
+
+            const openUserFilter = async () => {
+                if (!curNodeId.value) return;
+                userFilterModal.value.show = true;
+                userFilterModal.value.loading = true;
+                userFilterModal.value.searchText = "";
+                // 每次打开默认不重置时间输入，方便二次修改，如果需要每次清空可以取消注释下面两行
+                // userFilterModal.value.startDate = "";
+                // userFilterModal.value.endDate = "";
+                userFilterModal.value.users = [];
+                try {
+                    const res = await axios.get(`/api/user_total?node_id=${curNodeId.value}`);
+                    userFilterModal.value.users = res.data.users || [];
+                } catch (e) {
+                    console.error("加载用户列表失败");
+                } finally {
+                    userFilterModal.value.loading = false;
+                }
+            };
+
+            const filteredUserList = computed(() => {
+                const raw = userFilterModal.value.searchText.trim().toLowerCase();
+                if (!raw) return userFilterModal.value.users;
+                return userFilterModal.value.users.filter(u => u.toLowerCase().includes(raw));
+            });
+
+            // 🔥 升级：带着时间范围向后端发起请求，并渲染提示文本
+            const applyUserFilter = async (nickname) => {
+                historyFilterUser.value = nickname;
+                userFilterModal.value.show = false;
+                historyFilterTotal.value = "...";
+                
+                let ds = userFilterModal.value.startDate;
+                let de = userFilterModal.value.endDate;
+                let query = `/api/user_total?node_id=${curNodeId.value}&nickname=${encodeURIComponent(nickname)}`;
+                
+                if (ds) query += `&start_date=${ds}`;
+                if (de) query += `&end_date=${de}`;
+                
+                if (!ds && !de) {
+                    historyFilterDateRange.value = "所有时间";
+                } else {
+                    historyFilterDateRange.value = `${ds || '最早期'} 至 ${de || '今日'}`;
+                }
+
+                try {
+                    const res = await axios.get(query);
+                    historyFilterTotal.value = res.data.total || 0;
+                } catch (e) {
+                    historyFilterTotal.value = 0;
+                }
+            };
+
+            const clearUserFilter = () => {
+                historyFilterUser.value = "";
+                historyFilterTotal.value = 0;
             };
 
             const viewHistoryLogs = async (date) => {
@@ -709,8 +850,20 @@
 
                 await loadNodes();
                 loadData();
+                
                 setInterval(() => { 
-                    if(curNodeId.value) loadData(); 
+                    let shouldLoad = true;
+                    if (authModal.value.show) shouldLoad = false;
+                    
+                    const node = nodeList.value.find(n => n.device_id === curNodeId.value);
+                    if (node && node.has_password && !curPassword.value) {
+                        shouldLoad = false;
+                    }
+
+                    if (curNodeId.value && shouldLoad) {
+                        loadData(); 
+                    }
+                    
                     loadNodes(); 
                 }, 2000);
             });
@@ -723,7 +876,9 @@
                 closeModal, saveEdit, confirmPassword,
                 hideNicknames, hideHistory, handleHistoryEdit, deleteNode,
                 nodeList, curNodeId, curNodeName, selectNode, isManageMode,
-                getStatusText, getStatusTypeClass, resetRound 
+                getStatusText, getStatusTypeClass, resetRound,
+                historyFilterUser, historyFilterTotal, historyFilterDateRange,
+                userFilterModal, filteredUserList, openUserFilter, applyUserFilter, clearUserFilter
             };
         }
     }).mount('#app');

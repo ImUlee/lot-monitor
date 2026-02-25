@@ -386,6 +386,52 @@ def get_stats():
         "total_users": total_users, "total_wins": total_wins, "rank_list": rank_list,
         "date_range": date_range_str, "details": details, "history_data": history_list
     })
-
+# ==========================================
+# 🔥 升级：获取历史所有昵称 & 按时间范围查询指定昵称历史总和
+# ==========================================
+@app.route('/api/user_total', methods=['GET'])
+def get_user_total():
+    target_node_id = request.args.get('node_id')
+    nickname = request.args.get('nickname', '')
+    start_date = request.args.get('start_date', '')
+    end_date = request.args.get('end_date', '')
+    
+    if not target_node_id:
+        return jsonify({"error": "Missing node_id"}), 400
+        
+    conn = get_db_connection()
+    c = conn.cursor()
+    try:
+        if not nickname:
+            c.execute("SELECT DISTINCT nickname FROM logs WHERE device_id = ?", (target_node_id,))
+            users = [row['nickname'] for row in c.fetchall() if row['nickname']]
+            return jsonify({"users": users})
+        else:
+            # 如果传了时间范围，就在 Python 中精确解析时间并累加
+            if start_date or end_date:
+                c.execute("SELECT log_time, quantity FROM logs WHERE device_id = ? AND nickname = ?", (target_node_id, nickname))
+                rows = c.fetchall()
+                total = 0
+                
+                # 转换边界时间
+                start_dt = datetime.strptime(start_date + " 00:00:00", "%Y-%m-%d %H:%M:%S") if start_date else datetime.min
+                end_dt = datetime.strptime(end_date + " 23:59:59", "%Y-%m-%d %H:%M:%S") if end_date else datetime.max
+                
+                for row in rows:
+                    log_dt = parse_log_date(row['log_time'])
+                    if log_dt and start_dt <= log_dt <= end_dt:
+                        total += row['quantity']
+                return jsonify({"total": total})
+            else:
+                # 没传时间，直接利用 SQL 算所有总和，效率最高
+                c.execute("SELECT SUM(quantity) as total FROM logs WHERE device_id = ? AND nickname = ?", (target_node_id, nickname))
+                row = c.fetchone()
+                total = row['total'] if row['total'] else 0
+                return jsonify({"total": total})
+    except Exception as e:
+        print(f"User Total Error: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
