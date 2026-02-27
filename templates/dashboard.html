@@ -54,7 +54,6 @@
         .status-standby { color: #34C759; } .status-standby .static-dot { background-color: #34C759; }
         .status-offline { color: #A8A8A8; } .status-offline .static-dot { background-color: #A8A8A8; }
         .status-warning { color: #FF9500; } .status-warning .static-dot { background-color: #FF9500; }
-        .status-error { color: #FF3B30; } .status-error .static-dot { background-color: #FF3B30; box-shadow: 0 0 6px rgba(255, 59, 48, 0.5); }
 
         .hl-card { background: var(--card-bg); border-radius: 24px; padding: 16px 12px; height: 110px; box-shadow: 0 6px 20px rgba(0,0,0,0.025); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: background-color 0.3s; }
         .hl-num { font-size: 2.4rem; font-weight: 800; line-height: 1; margin-bottom: 6px; font-family: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
@@ -143,17 +142,17 @@
 
     <div class="custom-modal-overlay" v-if="settingsModal.show">
         <div class="custom-modal">
-            <h5 class="fw-bold mb-3">监控设置</h5>
+            <h5 class="fw-bold mb-3">数据视图切换</h5>
             <div class="mb-4">
-                <label class="form-label text-muted small">日志解析模板</label>
+                <label class="form-label text-muted small">选择当前节点要查看的业务数据</label>
                 <select class="form-select" v-model="settingsModal.templateId">
                     <option v-for="t in availableTemplates" :value="t.id">{{ t.name }}</option>
                 </select>
-                <div class="mt-2 small text-muted">当前节点上传的日志，将由该模板规则在服务端进行提取解析。</div>
+                <div class="mt-2 small text-muted">提示：客户端会自动识别日志类型，您只需在此切换查看对应的统计面板。</div>
             </div>
             <div class="d-flex justify-content-end gap-2">
                 <button class="btn btn-secondary rounded-pill px-4" @click="settingsModal.show = false">取消</button>
-                <button class="btn btn-primary rounded-pill px-4" @click="saveNodeSettings">保存</button>
+                <button class="btn btn-primary rounded-pill px-4" @click="saveNodeSettings">查看</button>
             </div>
         </div>
     </div>
@@ -241,10 +240,10 @@
                             <td class="text-muted small">{{ log.log_time.split(' ')[1] || log.log_time }}</td>
                             <td class="nickname-text">{{ hideNicknames ? '***' : log.nickname }}</td>
                             <td class="text-end align-middle" style="padding-top: 10px; padding-bottom: 10px;">
-                                <div v-if="log.item_type && log.item_type !== '钻石'" class="text-success small mb-1" style="font-size: 0.75rem; white-space: normal; line-height: 1.2; word-break: break-all;">
+                                <div v-if="log.item_type && log.item_type !== '钻石'" class="text-success small mb-1" style="font-size: 0.75rem; white-space: normal; line-height: 1.2; word-break: break-all; text-align: right;">
                                     {{ log.item_type }}
                                 </div>
-                                <span class="text-primary fw-bold" style="font-size: 1.1rem;">
+                                <span class="text-primary fw-bold" style="font-size: 1.1rem; min-width: 40px; text-align: right;">
                                     <template v-if="log.item_type === '钻石'">{{ log.quantity }}</template>
                                     <template v-else>+{{ log.quantity }}</template>
                                 </span>
@@ -265,7 +264,7 @@
                     <div class="icon-btn" @click="resetRound" title="重新开始新一轮" style="width: 28px; height: 28px;">
                         <ion-icon name="refresh-outline" style="font-size: 18px;"></ion-icon>
                     </div>
-                    <div class="icon-btn ms-2" @click="openNodeSettings" title="模板设置" style="width: 28px; height: 28px;">
+                    <div class="icon-btn ms-2" @click="openNodeSettings" title="数据视图切换" style="width: 28px; height: 28px;">
                         <ion-icon name="options-outline" style="font-size: 18px;"></ion-icon>
                     </div>
                 </div>
@@ -437,7 +436,6 @@
 
             const availableTemplates = ref([]);
             const settingsModal = ref({ show: false, templateId: "default" });
-            const alertedTemplateError = ref(false); 
 
             const hideNicknames = ref(false); const hideHistory = ref(false);
             const nodeList = ref([]); const curNodeId = ref(""); const curNodeName = ref("");
@@ -466,7 +464,7 @@
 
             const selectNode = (node) => {
                 if (isManageMode.value) return; 
-                isAuthError.value = false; alertedTemplateError.value = false;
+                isAuthError.value = false;
                 localStorage.setItem('last_node_id', node.device_id);
                 curNodeId.value = node.device_id; curNodeName.value = node.nickname;
                 clearUserFilter();
@@ -501,11 +499,6 @@
                     const res = await axios.get(`/api/stats?node_id=${encodeURIComponent(curNodeId.value)}&password=${encodeURIComponent(curPassword.value)}`);
                     stats.value = res.data;
                     isAuthError.value = false;
-
-                    if (stats.value.process_status === '模板错误' && !alertedTemplateError.value) {
-                        alertedTemplateError.value = true;
-                        alert("⚠️ 日志解析失败！\n\n检测到有日志上传，但格式与当前设定的模板不匹配。\n\n请点击“概览”页右上角的【设置(齿轮)图标】修改解析模板！");
-                    }
                 } catch(e) {
                     if (e.response && e.response.status === 403) {
                         stats.value = { process_status: "🔒 无权限", total_users: 0, total_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" };
@@ -528,8 +521,7 @@
             const saveNodeSettings = async () => {
                 try {
                     await axios.post('/api/set_template', { node_id: curNodeId.value, template_id: settingsModal.value.templateId });
-                    settingsModal.value.show = false; alertedTemplateError.value = false; 
-                    clearUserFilter(); alert("✅ 模板设置已保存！\n\n如果客户端仍在运行，下一批日志将采用新模板进行解析。"); loadData();
+                    settingsModal.value.show = false; clearUserFilter(); loadData();
                 } catch(e) { alert("保存设置失败"); }
             };
 
@@ -607,14 +599,12 @@
             const getStatusText = (status) => {
                 if (!status) return '未知'; if (status === '运行中') return '运行'; if (status === '未运行') return '在线';
                 if (status === '离线' || status === '未连接') return '离线'; if (status.includes('无权限')) return '无权限';
-                if (status === '模板错误') return '模板错';
                 return status;
             };
 
             const getStatusTypeClass = (status) => {
                 if (!status) return 'status-offline'; if (status === '运行中') return 'status-running'; if (status === '未运行') return 'status-standby';
                 if (status === '离线' || status === '未连接') return 'status-offline'; if (status.includes('无权限')) return 'status-warning';
-                if (status === '模板错误') return 'status-error';
                 return 'status-offline';
             };
 
