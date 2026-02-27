@@ -8,6 +8,9 @@ import json
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
+# 🔥 新增：开启网页模板热重载，修改 HTML 保存后刷新浏览器立刻生效！
+app.config['TEMPLATES_AUTO_RELOAD'] = True
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 app.jinja_env.variable_start_string = '[['
 app.jinja_env.variable_end_string = ']]'
 

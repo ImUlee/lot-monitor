@@ -56,7 +56,6 @@
         .status-warning { color: #FF9500; } .status-warning .static-dot { background-color: #FF9500; }
         .status-error { color: #FF3B30; } .status-error .static-dot { background-color: #FF3B30; box-shadow: 0 0 6px rgba(255, 59, 48, 0.5); }
 
-        /* 🔥 三栏自适应模块的重构 */
         .hl-card { background: var(--card-bg); border-radius: 20px; padding: 12px 4px; height: 90px; box-shadow: 0 6px 20px rgba(0,0,0,0.025); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: background-color 0.3s; }
         .hl-num { font-size: 1.8rem; font-weight: 800; line-height: 1; margin-bottom: 6px; font-family: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
         .hl-label { font-size: 0.8rem; color: var(--text-sub); font-weight: 500; }
@@ -94,6 +93,8 @@
         .fade-slide-enter-active, .fade-slide-leave-active { transition: opacity 0.2s; }
         .fade-slide-enter-from, .fade-slide-leave-to { opacity: 0; display: none; }
         
+        /* 🔥 核心固定布局，保证左侧文本截断生效，彻底杜绝换行溢出 */
+        .fixed-table { table-layout: fixed; width: 100%; }
         .table { --bs-table-bg: transparent; --bs-table-color: var(--text-main); color: var(--text-main); }
         .table-borderless td, .table-borderless th { border: none; }
         .border-bottom { border-bottom: 1px solid var(--border-color) !important; }
@@ -193,7 +194,6 @@
                         <input type="text" class="ios-date-input w-100" placeholder="起始时间 (可选)" onfocus="this.type='datetime-local'" onblur="if(!this.value) this.type='text'" v-model="userFilterModal.startDate">
                         <input type="text" class="ios-date-input w-100" placeholder="结束时间 (可选)" onfocus="this.type='datetime-local'" onblur="if(!this.value) this.type='text'" v-model="userFilterModal.endDate">
                     </div>
-                    
                     <div class="d-flex align-items-center gap-2">
                         <div class="ios-search-bar m-0" style="flex: 1; min-width: 0; height: 40px;">
                             <ion-icon name="search" class="ios-search-icon"></ion-icon>
@@ -251,22 +251,27 @@
             <div class="log-modal-body">
                 <div v-if="historyLogsModal.loading" class="text-center py-5 text-muted">加载中...</div>
                 <div v-else-if="historyLogsModal.logs.length === 0" class="text-center py-5 text-muted">当日无数据</div>
-                <table v-else class="table table-borderless align-middle">
-                    <thead class="small border-bottom"><tr><th>时间</th><th>用户</th><th class="text-end">明细</th></tr></thead>
+                <table v-else class="table table-borderless align-middle fixed-table m-0">
+                    <thead class="small border-bottom"><tr>
+                        <th style="padding-bottom: 10px; width: 70%;">用户 / 时间</th>
+                        <th class="text-end" style="padding-bottom: 10px; width: 30%;">明细</th>
+                    </tr></thead>
                     <tbody>
                         <tr v-for="log in historyLogsModal.logs" class="border-bottom">
-                            <td class="text-muted small">{{ formatShortDate(log.log_time) }}</td>
-                            <td class="nickname-text">{{ hideNicknames ? '***' : log.nickname }}</td>
-                            <td class="text-end align-middle" style="padding-top: 10px; padding-bottom: 10px;">
-                                <template v-if="log.item_type === '钻石'">
-                                    <span class="text-primary fw-bold" style="font-size: 1.1rem;">{{ log.quantity }}</span>
-                                </template>
-                                <template v-else>
-                                    <div class="text-success fw-bold mb-1" style="font-size: 0.95rem;">实物</div>
-                                    <div class="text-muted" style="font-size: 0.7rem; white-space: normal; line-height: 1.3; word-break: break-all; max-width: 140px; display: inline-block; text-align: right;">
-                                        {{ log.item_type }}
-                                    </div>
-                                </template>
+                            <td class="py-3" style="overflow: hidden;">
+                                <div class="nickname-text text-truncate">{{ hideNicknames ? '***' : log.nickname }}</div>
+                                <div class="text-muted small text-truncate" style="font-size: 0.75rem; margin-top: 4px;">
+                                    {{ formatShortDate(log.log_time) }}
+                                    <template v-if="log.item_type && log.item_type !== '钻石'">
+                                        <span style="margin-left: 4px; opacity: 0.85;">| {{ log.item_type }}</span>
+                                    </template>
+                                </div>
+                            </td>
+                            <td class="text-end py-3 align-middle">
+                                <span class="text-primary fw-bold" style="font-size: 1.15rem;">
+                                    <template v-if="log.item_type === '钻石'">{{ log.quantity }}</template>
+                                    <template v-else>实物</template>
+                                </span>
                             </td>
                         </tr>
                     </tbody>
@@ -297,7 +302,7 @@
             <div class="row g-2 mb-4">
                 <div class="col-4"><div class="hl-card"><div class="hl-num num-account">{{ stats.total_users || 0 }}</div><div class="hl-label">账号数量</div></div></div>
                 <div class="col-4"><div class="hl-card"><div class="hl-num num-total">{{ stats.total_wins || 0 }}</div><div class="hl-label">钻石产出</div></div></div>
-                <div class="col-4"><div class="hl-card"><div class="hl-num text-success">{{ stats.total_physical_wins || 0 }}</div><div class="hl-label">实物中奖</div></div></div>
+                <div class="col-4"><div class="hl-card"><div class="hl-num text-primary">{{ stats.total_physical_wins || 0 }}</div><div class="hl-label">实物中奖</div></div></div>
             </div>
 
             <div class="d-flex align-items-center mb-2 px-2">
@@ -338,22 +343,30 @@
                     </div>
                 </transition>
                 <div style="max-height: 65vh; overflow-y: auto;">
-                    <table class="table table-borderless align-middle m-0">
-                        <thead class="small border-bottom"><tr><th style="padding-bottom: 10px;"><div class="d-flex align-items-center"><span>用户 / 时间</span><div class="icon-btn ms-1" style="width:28px; height:28px;" @click="hideNicknames = !hideNicknames"><ion-icon :name="hideNicknames ? 'eye-off-outline' : 'eye-outline'" style="font-size: 18px;"></ion-icon></div></div></th><th class="text-end" style="padding-bottom: 10px;">明细</th></tr></thead>
-                        <tbody><tr v-for="item in filteredDetails" class="border-bottom"><td class="py-3">
-                            <div class="nickname-text text-truncate" style="max-width: 220px;">{{ hideNicknames ? '***' : item.nickname }}</div>
-                            <div class="text-muted small" style="font-size: 0.75rem; margin-top: 4px;">{{ formatShortDate(item.log_time) }}</div>
-                        </td><td class="text-end py-3 align-middle">
-                            <template v-if="item.item_type === '钻石'">
-                                <span class="text-primary fw-bold" style="font-size: 1.2rem;">{{ item.quantity }}</span>
-                            </template>
-                            <template v-else>
-                                <div class="text-success fw-bold mb-1" style="font-size: 1.05rem;">实物</div>
-                                <div class="text-muted" style="font-size: 0.7rem; white-space: normal; line-height: 1.3; word-break: break-all; max-width: 140px; display: inline-block; text-align: right;">
-                                    {{ item.item_type }}
+                    <table class="table table-borderless align-middle fixed-table m-0">
+                        <thead class="small border-bottom"><tr>
+                            <th style="padding-bottom: 10px; width: 70%;">
+                                <div class="d-flex align-items-center"><span>用户 / 时间</span><div class="icon-btn ms-1" style="width:28px; height:28px;" @click="hideNicknames = !hideNicknames"><ion-icon :name="hideNicknames ? 'eye-off-outline' : 'eye-outline'" style="font-size: 18px;"></ion-icon></div></div>
+                            </th>
+                            <th class="text-end" style="padding-bottom: 10px; width: 30%;">明细</th>
+                        </tr></thead>
+                        <tbody><tr v-for="item in filteredDetails" class="border-bottom">
+                            <td class="py-3" style="overflow: hidden;">
+                                <div class="nickname-text text-truncate">{{ hideNicknames ? '***' : item.nickname }}</div>
+                                <div class="text-muted small text-truncate" style="font-size: 0.75rem; margin-top: 4px;">
+                                    {{ formatShortDate(item.log_time) }}
+                                    <template v-if="item.item_type && item.item_type !== '钻石'">
+                                        <span style="margin-left: 4px; opacity: 0.85;">| {{ item.item_type }}</span>
+                                    </template>
                                 </div>
-                            </template>
-                        </td></tr></tbody>
+                            </td>
+                            <td class="text-end py-3 align-middle">
+                                <span class="text-primary fw-bold" style="font-size: 1.15rem;">
+                                    <template v-if="item.item_type === '钻石'">{{ item.quantity }}</template>
+                                    <template v-else>实物</template>
+                                </span>
+                            </td>
+                        </tr></tbody>
                     </table>
                 </div>
             </div>
@@ -467,14 +480,13 @@
             const nodeList = ref([]); const curNodeId = ref(""); const curNodeName = ref("");
             const curPassword = ref(""); const isAuthError = ref(false); const isManageMode = ref(false);
 
-            // 🔥 核心时间格式化工具：抹去所有的年份与秒数
             const formatShortDate = (dateStr) => {
                 if (!dateStr) return '';
                 const cleanStr = dateStr.trim();
                 const parts = cleanStr.split(' ');
                 if (parts.length >= 2) {
-                    let d = parts[0].replace(/-/g, '/').substring(5); // "2026-02-27" -> "02/27"
-                    let t = parts[1].substring(0, 5); // "19:19:36" -> "19:19"
+                    let d = parts[0].replace(/-/g, '/').substring(5); 
+                    let t = parts[1].substring(0, 5); 
                     return `${d} ${t}`;
                 }
                 return cleanStr;
