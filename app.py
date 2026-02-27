@@ -21,19 +21,25 @@ MONTH_MAP = {
 
 LOG_PARSERS = {
     "default": {
-        "name": "万花筒",
+        "name": "万花筒 (仅限 lot.txt)",
         "pattern": r"\[(.*?)\]\s+(.*?)_\d+\s+\|.*?[,，]\s*(?:.*?)[,，]\s*(\d+)",
-        "item_type": "钻石"
+        "item_type": "钻石",
+        "file_rule": "lot.txt",  
+        "folder_rule": ""        
     },
     "qilin": {
-        "name": "麒麟",
+        "name": "麒麟 (logs 目录多文档)",
         "pattern": r"\[(.*?)\]\s*恭喜\[(.*?)\].*?中了-(\d+)-",
-        "item_type": "钻石"
+        "item_type": "钻石",
+        "file_rule": "*qiling.txt", 
+        "folder_rule": "logs"       
     },
     "pixiu": {
-        "name": "貔貅 (实物提取)",
+        "name": "貔貅 (含实物动态解析)",
         "pattern": r"^(.*?)----.*?----.*?----(.*?)----(.*)$",
-        "item_type": "动态"
+        "item_type": "动态",
+        "file_rule": "*中奖记录.txt", 
+        "folder_rule": "中奖记录"       
     }
 }
 
@@ -71,8 +77,13 @@ def init_db():
     c.execute('''CREATE TABLE IF NOT EXISTS daily_overrides (date TEXT, device_id TEXT, manual_users INTEGER, manual_sum INTEGER, PRIMARY KEY (date, device_id))''')
     try: c.execute("ALTER TABLE devices ADD COLUMN template_id TEXT DEFAULT 'default'")
     except: pass
+    try: c.execute("ALTER TABLE devices ADD COLUMN last_msg TEXT DEFAULT '正常'")
+    except: pass
+    try: c.execute("ALTER TABLE devices ADD COLUMN detected_template TEXT DEFAULT ''")
+    except: pass
     try: c.execute("ALTER TABLE logs ADD COLUMN template_id TEXT DEFAULT 'default'")
     except: pass
+    
     c.execute("PRAGMA table_info(daily_overrides)")
     columns = [col['name'] for col in c.fetchall()]
     if 'template_id' not in columns:
@@ -80,6 +91,7 @@ def init_db():
         c.execute('''CREATE TABLE daily_overrides (date TEXT, device_id TEXT, template_id TEXT DEFAULT 'default', manual_users INTEGER, manual_sum INTEGER, PRIMARY KEY (date, device_id, template_id))''')
         c.execute("INSERT INTO daily_overrides (date, device_id, manual_users, manual_sum) SELECT date, device_id, manual_users, manual_sum FROM daily_overrides_old")
         c.execute("DROP TABLE daily_overrides_old")
+
     try: c.execute('''DELETE FROM logs WHERE id NOT IN (SELECT MIN(id) FROM logs GROUP BY log_time, nickname, quantity, device_id)''')
     except: pass
     conn.commit(); conn.close()
@@ -87,7 +99,8 @@ def init_db():
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
     try: c = conn.cursor(); c.execute("SELECT 1 FROM devices LIMIT 1")
-    except sqlite3.OperationalError: conn.close(); init_db(); conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
+    except sqlite3.OperationalError:
+        conn.close(); init_db(); conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
     return conn
 
 init_db()
@@ -95,8 +108,7 @@ init_db()
 def update_device_status(device_id, nickname, process_running, password):
     conn = get_db_connection(); c = conn.cursor(); now = time.time()
     c.execute("UPDATE devices SET nickname=?, last_seen=?, process_running=?, password=? WHERE device_id=?", (nickname, now, process_running, password, device_id))
-    if c.rowcount == 0:
-        c.execute("INSERT INTO devices (device_id, nickname, last_seen, process_running, first_seen, password, template_id) VALUES (?, ?, ?, ?, ?, ?, 'default')", (device_id, nickname, now, process_running, now, password))
+    if c.rowcount == 0: c.execute("INSERT INTO devices (device_id, nickname, last_seen, process_running, first_seen, password, template_id, last_msg, detected_template) VALUES (?, ?, ?, ?, ?, ?, 'default', '正常', '')", (device_id, nickname, now, process_running, now, password))
     conn.commit(); conn.close()
 
 @app.route('/manifest.json')
@@ -113,9 +125,7 @@ def get_nodes():
     conn = get_db_connection(); c = conn.cursor()
     c.execute("SELECT * FROM devices ORDER BY first_seen ASC"); rows = c.fetchall()
     nodes = []; now = time.time()
-    for r in rows:
-        is_online = (now - r['last_seen']) < 15
-        nodes.append({ "device_id": r['device_id'], "nickname": r['nickname'], "is_online": is_online, "process_running": bool(r['process_running']), "has_password": bool(r['password']), "template_id": r['template_id'] })
+    for r in rows: nodes.append({ "device_id": r['device_id'], "nickname": r['nickname'], "is_online": (now - r['last_seen']) < 15, "process_running": bool(r['process_running']), "has_password": bool(r['password']), "template_id": r['template_id'] })
     conn.close()
     return jsonify({"nodes": nodes})
 
@@ -152,7 +162,7 @@ def set_template():
     device_id = data.get('node_id'); template_id = data.get('template_id')
     if not device_id or not template_id: return jsonify({"error": "Missing params"}), 400
     conn = get_db_connection()
-    conn.execute("UPDATE devices SET template_id = ? WHERE device_id = ?", (template_id, device_id))
+    conn.execute("UPDATE devices SET template_id = ?, last_msg = '正常' WHERE device_id = ?", (template_id, device_id))
     conn.commit(); conn.close()
     return jsonify({"status": "success"})
 
@@ -166,7 +176,8 @@ def get_history_logs():
         row = c.fetchone()
         template_id = row['template_id'] if row and row['template_id'] else 'default'
         target_date_slash = target_date.replace('-', '/')
-        c.execute("SELECT log_time, nickname, item_type, quantity FROM logs WHERE device_id = ? AND template_id = ? AND (log_time LIKE ? OR log_time LIKE ?) ORDER BY id DESC", (target_node_id, template_id, f"{target_date}%", f"{target_date_slash}%"))
+        c.execute("SELECT log_time, nickname, item_type, quantity FROM logs WHERE device_id = ? AND template_id = ? AND (log_time LIKE ? OR log_time LIKE ?) ORDER BY id DESC", 
+                  (target_node_id, template_id, f"{target_date}%", f"{target_date_slash}%"))
         return jsonify({"logs": [dict(row) for row in c.fetchall()]})
     except: return jsonify({"logs": []})
     finally: conn.close()
@@ -179,7 +190,12 @@ def heartbeat():
     if not device_id: return jsonify({"status": "error"}), 400
     try:
         update_device_status(device_id, nickname, process_running, password)
-        return jsonify({"status": "ok"})
+        conn = get_db_connection(); c = conn.cursor()
+        c.execute("SELECT template_id FROM devices WHERE device_id = ?", (device_id,))
+        row = c.fetchone(); conn.close()
+        template_id = row['template_id'] if row and row['template_id'] else 'default'
+        parser = LOG_PARSERS.get(template_id, LOG_PARSERS['default'])
+        return jsonify({ "status": "ok", "file_rule": parser.get("file_rule", "lot.txt"), "folder_rule": parser.get("folder_rule", "") })
     except Exception as e: return jsonify({"error": str(e)}), 500
 
 @app.route('/api/health', methods=['GET'])
@@ -202,20 +218,14 @@ def update_history():
 
 @app.route('/api/user_total', methods=['GET'])
 def get_user_total():
-    target_node_id = request.args.get('node_id')
-    nickname = request.args.get('nickname', '')
-    start_date = request.args.get('start_date', '')
-    end_date = request.args.get('end_date', '')
-    calc_all = request.args.get('calc_all', '0')
+    target_node_id = request.args.get('node_id'); nickname = request.args.get('nickname', '')
+    start_date = request.args.get('start_date', ''); end_date = request.args.get('end_date', ''); calc_all = request.args.get('calc_all', '0')
     if not target_node_id: return jsonify({"error": "Missing node_id"}), 400
     conn = get_db_connection(); c = conn.cursor()
     try:
         c.execute("SELECT template_id FROM devices WHERE device_id = ?", (target_node_id,))
-        row = c.fetchone()
-        template_id = row['template_id'] if row and row['template_id'] else 'default'
-
-        start_dt = datetime.min
-        end_dt = datetime.max
+        row = c.fetchone(); template_id = row['template_id'] if row and row['template_id'] else 'default'
+        start_dt = datetime.min; end_dt = datetime.max
         if start_date:
             start_str = start_date.replace('T', ' ')
             if len(start_str) == 10: start_str += " 00:00:00"
@@ -258,8 +268,6 @@ def upload_file():
     file = request.files.get('file'); device_id = request.form.get('device_id')
     nickname = request.form.get('nickname', 'Unknown'); password = request.form.get('password', '')
     process_running = 1 if request.form.get('process_running', 'False') == 'True' else 0
-    
-    # 🔥 核心：无条件信任客户端探测出来的模板
     client_template = request.form.get('template_id', 'default')
     
     if not file or not device_id: return jsonify({"status": "error"}), 400
@@ -274,12 +282,13 @@ def upload_file():
     except: content = raw_data.decode('utf-8', errors='ignore')
     lines = content.split('\n')
     
-    new_count = 0
+    new_count = 0; total_matched = 0
     for line in lines:
         line = line.strip()
         if not line: continue 
         match = re.search(pattern, line)
         if match:
+            total_matched += 1
             if client_template == 'pixiu':
                 log_time_raw, nick, raw_val = match.groups()
                 log_time = log_time_raw.replace('年', '-').replace('月', '-').replace('日', '').replace('时', ':').replace('分', ':').replace('秒', '')
@@ -302,6 +311,9 @@ def upload_file():
                 new_count += 1
             except sqlite3.IntegrityError: pass 
             
+    last_msg = "正常"
+    if len(lines) > 10 and total_matched == 0: last_msg = "模板错误"
+    c.execute("UPDATE devices SET last_msg = ?, detected_template = ? WHERE device_id = ?", (last_msg, client_template, device_id))
     conn.commit(); conn.close()
     return jsonify({"status": "success", "new_entries": new_count})
 
@@ -310,24 +322,26 @@ def get_stats():
     target_node_id = request.args.get('node_id'); req_password = request.args.get('password', '')
     conn = get_db_connection(); c = conn.cursor()
     try:
-        process_status_text = "未连接"
-        current_template = "default"
+        process_status_text = "未连接"; current_template = "default"; detected_template = ""
         if target_node_id:
             try:
-                c.execute("SELECT last_seen, process_running, password, template_id FROM devices WHERE device_id = ?", (target_node_id,))
+                c.execute("SELECT last_seen, process_running, password, template_id, last_msg, detected_template FROM devices WHERE device_id = ?", (target_node_id,))
                 row = c.fetchone()
                 if row:
                     if row['password'] and row['password'] != req_password:
                         conn.close(); return jsonify({"error": "auth_failed"}), 403
-                    current_template = row['template_id']
-                    if (time.time() - row['last_seen']) >= 15: process_status_text = "离线" 
-                    elif row['process_running']: process_status_text = "运行中"
-                    else: process_status_text = "未运行"
+                    current_template = row['template_id']; detected_template = row['detected_template'] if row['detected_template'] else ""
+                    if row['last_msg'] == "模板错误": process_status_text = "模板错误"
+                    else:
+                        if (time.time() - row['last_seen']) >= 15: process_status_text = "离线" 
+                        elif row['process_running']: process_status_text = "运行中"
+                        else: process_status_text = "未运行"
                 else: process_status_text = "未知设备"
             except sqlite3.OperationalError: process_status_text = "数据异常"
         else: process_status_text = "请选择节点"
 
-        query = "SELECT id, log_time, nickname, quantity FROM logs WHERE device_id = ? AND template_id = ?"
+        # 🔥 数据源里加入了 item_type 用于实物判断
+        query = "SELECT id, log_time, nickname, quantity, item_type FROM logs WHERE device_id = ? AND template_id = ?"
         c.execute(query, (target_node_id, current_template))
         all_raw_logs = [dict(row) for row in c.fetchall()]
 
@@ -338,14 +352,20 @@ def get_stats():
         if key in round_start_times:
             try: cutoff_time = max(base_cutoff, datetime.strptime(round_start_times[key], '%Y-%m-%d %H:%M:%S'))
             except: pass
+        elif target_node_id in round_start_times:
+            try: cutoff_time = max(base_cutoff, datetime.strptime(round_start_times[target_node_id], '%Y-%m-%d %H:%M:%S'))
+            except: pass
 
         overview_logs = []
         for log in all_raw_logs:
             log_dt = parse_log_date(log['log_time'])
-            if log_dt and log_dt >= cutoff_time: overview_logs.append({ "nickname": log['nickname'], "quantity": log['quantity'], "log_dt": log_dt })
+            if log_dt and log_dt >= cutoff_time: 
+                overview_logs.append({ "nickname": log['nickname'], "quantity": log['quantity'], "item_type": log['item_type'], "log_dt": log_dt })
 
         total_users = len(set(l['nickname'] for l in overview_logs))
-        total_wins = sum(l['quantity'] for l in overview_logs)
+        # 🔥 计算钻石和实物的区分
+        total_wins = sum(l['quantity'] for l in overview_logs if l.get('item_type') == '钻石')
+        total_physical_wins = sum(l['quantity'] for l in overview_logs if l.get('item_type') != '钻石')
         
         rank_map = {}
         for l in overview_logs:
@@ -381,14 +401,15 @@ def get_stats():
 
     except Exception as e:
         print(f"Stats Error: {e}", flush=True)
-        process_status_text, total_users, total_wins, rank_list, details, history_list, current_template = "Error", 0, 0, [], [], [], "default"
+        process_status_text, total_users, total_wins, total_physical_wins, rank_list, details, history_list = "Error", 0, 0, 0, [], [], []
+        current_template, detected_template = "default", ""
         date_range_str = "Error"
     
     conn.close()
     return jsonify({
-        "process_status": process_status_text, "current_template": current_template,
-        "total_users": total_users, "total_wins": total_wins, "rank_list": rank_list,
-        "date_range": date_range_str, "details": details, "history_data": history_list
+        "process_status": process_status_text, "current_template": current_template, "detected_template": detected_template,
+        "total_users": total_users, "total_wins": total_wins, "total_physical_wins": total_physical_wins, 
+        "rank_list": rank_list, "date_range": date_range_str, "details": details, "history_data": history_list
     })
 
 if __name__ == '__main__':

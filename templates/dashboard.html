@@ -54,10 +54,12 @@
         .status-standby { color: #34C759; } .status-standby .static-dot { background-color: #34C759; }
         .status-offline { color: #A8A8A8; } .status-offline .static-dot { background-color: #A8A8A8; }
         .status-warning { color: #FF9500; } .status-warning .static-dot { background-color: #FF9500; }
+        .status-error { color: #FF3B30; } .status-error .static-dot { background-color: #FF3B30; box-shadow: 0 0 6px rgba(255, 59, 48, 0.5); }
 
-        .hl-card { background: var(--card-bg); border-radius: 24px; padding: 16px 12px; height: 110px; box-shadow: 0 6px 20px rgba(0,0,0,0.025); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: background-color 0.3s; }
-        .hl-num { font-size: 2.4rem; font-weight: 800; line-height: 1; margin-bottom: 6px; font-family: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
-        .hl-label { font-size: 0.85rem; color: var(--text-sub); font-weight: 500; }
+        /* 🔥 三栏自适应模块的重构 */
+        .hl-card { background: var(--card-bg); border-radius: 20px; padding: 12px 4px; height: 90px; box-shadow: 0 6px 20px rgba(0,0,0,0.025); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: background-color 0.3s; }
+        .hl-num { font-size: 1.8rem; font-weight: 800; line-height: 1; margin-bottom: 6px; font-family: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
+        .hl-label { font-size: 0.8rem; color: var(--text-sub); font-weight: 500; }
         .num-account { color: var(--text-main); } .num-total { color: #5ec26b; } 
         
         .list-row { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
@@ -76,9 +78,9 @@
         .text-dark-adaptive { color: #000; } @media (prefers-color-scheme: dark) { .text-dark-adaptive { color: #FFF; } }
         .arrow { transition: transform 0.3s; font-size: 12px; color: var(--text-sub); margin-left: 10px; display: inline-block; } .arrow.rotated { transform: rotate(180deg); }
         
-        .custom-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--modal-overlay); z-index: 9999; display: flex; justify-content: center; align-items: center; }
-        .custom-modal { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 24px; width: 90%; max-width: 400px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); animation: popIn 0.2s ease-out; color: var(--text-main); }
-        .full-screen-modal { width: 95%; max-width: 800px; height: 90%; display: flex; flex-direction: column; }
+        .custom-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--modal-overlay); z-index: 9999; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .custom-modal { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 24px; width: 100%; max-width: 400px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); animation: popIn 0.2s ease-out; color: var(--text-main); }
+        .full-screen-modal { width: 100%; max-width: 800px; height: 90vh; display: flex; flex-direction: column; }
         @keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
         .form-control, .form-select { background-color: var(--input-bg); border-color: var(--input-border); color: var(--text-main); border-radius: 10px; }
         .form-control:focus, .form-select:focus { background-color: var(--input-bg); color: var(--text-main); border-color: #007AFF; box-shadow: 0 0 0 0.2rem rgba(0,122,255,0.25); }
@@ -139,6 +141,22 @@
 {% raw %}
 <div id="app" v-cloak>
     <div id="dynamic-top-mask" class="top-blur-mask"></div>
+
+    <div class="custom-modal-overlay" v-if="templatePromptModal.show">
+        <div class="custom-modal" style="border: 2px solid rgba(0,122,255,0.4);">
+            <h5 class="fw-bold mb-3 d-flex align-items-center">
+                <ion-icon name="bulb" style="color: #FF9500; margin-right: 6px;"></ion-icon>发现新日志！
+            </h5>
+            <div class="mb-4 text-muted" style="font-size: 0.95rem; line-height: 1.5;">
+                前线客户端报告，该节点目前正在产生 <span class="fw-bold text-primary px-1">{{ templatePromptModal.detectedName }}</span> 的数据。<br><br>
+                但您当前面板查看的是 <span class="fw-bold text-dark px-1">{{ templatePromptModal.currentName }}</span>，是否立即切换视图以显示最新数据？
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+                <button class="btn btn-secondary rounded-pill px-4" @click="ignoreTemplatePrompt">忽略提示</button>
+                <button class="btn btn-primary rounded-pill px-4" @click="acceptTemplatePrompt">切换视图</button>
+            </div>
+        </div>
+    </div>
 
     <div class="custom-modal-overlay" v-if="settingsModal.show">
         <div class="custom-modal">
@@ -237,16 +255,18 @@
                     <thead class="small border-bottom"><tr><th>时间</th><th>用户</th><th class="text-end">明细</th></tr></thead>
                     <tbody>
                         <tr v-for="log in historyLogsModal.logs" class="border-bottom">
-                            <td class="text-muted small">{{ log.log_time.split(' ')[1] || log.log_time }}</td>
+                            <td class="text-muted small">{{ formatShortDate(log.log_time) }}</td>
                             <td class="nickname-text">{{ hideNicknames ? '***' : log.nickname }}</td>
                             <td class="text-end align-middle" style="padding-top: 10px; padding-bottom: 10px;">
-                                <div v-if="log.item_type && log.item_type !== '钻石'" class="text-success small mb-1" style="font-size: 0.75rem; white-space: normal; line-height: 1.2; word-break: break-all; text-align: right;">
-                                    {{ log.item_type }}
-                                </div>
-                                <span class="text-primary fw-bold" style="font-size: 1.1rem; min-width: 40px; text-align: right;">
-                                    <template v-if="log.item_type === '钻石'">{{ log.quantity }}</template>
-                                    <template v-else>+{{ log.quantity }}</template>
-                                </span>
+                                <template v-if="log.item_type === '钻石'">
+                                    <span class="text-primary fw-bold" style="font-size: 1.1rem;">{{ log.quantity }}</span>
+                                </template>
+                                <template v-else>
+                                    <div class="text-success fw-bold mb-1" style="font-size: 0.95rem;">实物</div>
+                                    <div class="text-muted" style="font-size: 0.7rem; white-space: normal; line-height: 1.3; word-break: break-all; max-width: 140px; display: inline-block; text-align: right;">
+                                        {{ log.item_type }}
+                                    </div>
+                                </template>
                             </td>
                         </tr>
                     </tbody>
@@ -275,8 +295,9 @@
             </div>
 
             <div class="row g-2 mb-4">
-                <div class="col-6"><div class="hl-card"><div class="hl-num num-account">{{ stats.total_users || 0 }}</div><div class="hl-label">账号数量</div></div></div>
-                <div class="col-6"><div class="hl-card"><div class="hl-num num-total">{{ stats.total_wins || 0 }}</div><div class="hl-label">本轮产出</div></div></div>
+                <div class="col-4"><div class="hl-card"><div class="hl-num num-account">{{ stats.total_users || 0 }}</div><div class="hl-label">账号数量</div></div></div>
+                <div class="col-4"><div class="hl-card"><div class="hl-num num-total">{{ stats.total_wins || 0 }}</div><div class="hl-label">钻石产出</div></div></div>
+                <div class="col-4"><div class="hl-card"><div class="hl-num text-success">{{ stats.total_physical_wins || 0 }}</div><div class="hl-label">实物中奖</div></div></div>
             </div>
 
             <div class="d-flex align-items-center mb-2 px-2">
@@ -321,15 +342,17 @@
                         <thead class="small border-bottom"><tr><th style="padding-bottom: 10px;"><div class="d-flex align-items-center"><span>用户 / 时间</span><div class="icon-btn ms-1" style="width:28px; height:28px;" @click="hideNicknames = !hideNicknames"><ion-icon :name="hideNicknames ? 'eye-off-outline' : 'eye-outline'" style="font-size: 18px;"></ion-icon></div></div></th><th class="text-end" style="padding-bottom: 10px;">明细</th></tr></thead>
                         <tbody><tr v-for="item in filteredDetails" class="border-bottom"><td class="py-3">
                             <div class="nickname-text text-truncate" style="max-width: 220px;">{{ hideNicknames ? '***' : item.nickname }}</div>
-                            <div class="text-muted small" style="font-size: 0.75rem; margin-top: 4px;">{{ item.log_time }}</div>
+                            <div class="text-muted small" style="font-size: 0.75rem; margin-top: 4px;">{{ formatShortDate(item.log_time) }}</div>
                         </td><td class="text-end py-3 align-middle">
-                            <div v-if="item.item_type && item.item_type !== '钻石'" class="text-success small mb-1" style="font-size: 0.75rem; white-space: normal; line-height: 1.2; word-break: break-all; text-align: right;">
-                                {{ item.item_type }}
-                            </div>
-                            <span class="text-primary fw-bold" style="font-size: 1.1rem; min-width: 40px; text-align: right;">
-                                <template v-if="item.item_type === '钻石'">{{ item.quantity }}</template>
-                                <template v-else>+{{ item.quantity }}</template>
-                            </span>
+                            <template v-if="item.item_type === '钻石'">
+                                <span class="text-primary fw-bold" style="font-size: 1.2rem;">{{ item.quantity }}</span>
+                            </template>
+                            <template v-else>
+                                <div class="text-success fw-bold mb-1" style="font-size: 1.05rem;">实物</div>
+                                <div class="text-muted" style="font-size: 0.7rem; white-space: normal; line-height: 1.3; word-break: break-all; max-width: 140px; display: inline-block; text-align: right;">
+                                    {{ item.item_type }}
+                                </div>
+                            </template>
                         </td></tr></tbody>
                     </table>
                 </div>
@@ -425,7 +448,7 @@
         setup() {
             const curPage = ref(1);
             const expandedDates = ref({}); 
-            const stats = ref({ process_status: "未知", current_template: "default", total_users: 0, total_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" });
+            const stats = ref({ process_status: "未知", current_template: "default", detected_template: "", total_users: 0, total_wins: 0, total_physical_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" });
             const searchText = ref(""); const searchType = ref("nick"); const filterSmallPacks = ref(false);
             const editModal = ref({ show: false, data: { field1: '', field2: 0, field3: 0 } });
             const authModal = ref({ show: false, password: "", remember: false, targetNode: null }); 
@@ -436,10 +459,26 @@
 
             const availableTemplates = ref([]);
             const settingsModal = ref({ show: false, templateId: "default" });
+            const templatePromptModal = ref({ show: false, detectedId: "", detectedName: "", currentName: "" });
+            const ignoredTemplatePrompt = ref(""); 
+            const alertedTemplateError = ref(false); 
 
             const hideNicknames = ref(false); const hideHistory = ref(false);
             const nodeList = ref([]); const curNodeId = ref(""); const curNodeName = ref("");
             const curPassword = ref(""); const isAuthError = ref(false); const isManageMode = ref(false);
+
+            // 🔥 核心时间格式化工具：抹去所有的年份与秒数
+            const formatShortDate = (dateStr) => {
+                if (!dateStr) return '';
+                const cleanStr = dateStr.trim();
+                const parts = cleanStr.split(' ');
+                if (parts.length >= 2) {
+                    let d = parts[0].replace(/-/g, '/').substring(5); // "2026-02-27" -> "02/27"
+                    let t = parts[1].substring(0, 5); // "19:19:36" -> "19:19"
+                    return `${d} ${t}`;
+                }
+                return cleanStr;
+            };
 
             const changeTab = (page) => { curPage.value = page; isManageMode.value = false; window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
@@ -464,7 +503,8 @@
 
             const selectNode = (node) => {
                 if (isManageMode.value) return; 
-                isAuthError.value = false;
+                isAuthError.value = false; alertedTemplateError.value = false;
+                ignoredTemplatePrompt.value = ""; templatePromptModal.value.show = false;
                 localStorage.setItem('last_node_id', node.device_id);
                 curNodeId.value = node.device_id; curNodeName.value = node.nickname;
                 clearUserFilter();
@@ -473,7 +513,7 @@
                     if (savedPass) { curPassword.value = savedPass; loadData(); } 
                     else {
                         curPassword.value = ""; authModal.value.targetNode = node; authModal.value.password = ""; authModal.value.remember = false; authModal.value.show = true;
-                        stats.value = { process_status: "🔒 无权限", total_users: 0, total_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" };
+                        stats.value = { process_status: "🔒 无权限", total_users: 0, total_wins: 0, total_physical_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" };
                     }
                 } else { curPassword.value = ""; loadData(); }
             };
@@ -499,9 +539,20 @@
                     const res = await axios.get(`/api/stats?node_id=${encodeURIComponent(curNodeId.value)}&password=${encodeURIComponent(curPassword.value)}`);
                     stats.value = res.data;
                     isAuthError.value = false;
+
+                    const detected = stats.value.detected_template;
+                    const current = stats.value.current_template;
+                    if (detected && detected !== current) {
+                        if (detected !== ignoredTemplatePrompt.value && !templatePromptModal.value.show && availableTemplates.value.length > 0) {
+                            const dName = availableTemplates.value.find(t => t.id === detected)?.name || detected;
+                            const cName = availableTemplates.value.find(t => t.id === current)?.name || current;
+                            templatePromptModal.value = { show: true, detectedId: detected, detectedName: dName, currentName: cName };
+                        }
+                    }
+
                 } catch(e) {
                     if (e.response && e.response.status === 403) {
-                        stats.value = { process_status: "🔒 无权限", total_users: 0, total_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" };
+                        stats.value = { process_status: "🔒 无权限", total_users: 0, total_wins: 0, total_physical_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" };
                         if (!isAuthError.value) {
                             alert("密码错误，请重新输入"); isAuthError.value = true; curPassword.value = ""; 
                             if (localStorage.getItem(`pwd_${curNodeId.value}`)) localStorage.removeItem(`pwd_${curNodeId.value}`);
@@ -510,6 +561,22 @@
                         }
                     }
                 }
+            };
+            
+            const ignoreTemplatePrompt = () => {
+                ignoredTemplatePrompt.value = templatePromptModal.value.detectedId;
+                templatePromptModal.value.show = false;
+            };
+            
+            const acceptTemplatePrompt = async () => {
+                try {
+                    await axios.post('/api/set_template', { node_id: curNodeId.value, template_id: templatePromptModal.value.detectedId });
+                    templatePromptModal.value.show = false;
+                    ignoredTemplatePrompt.value = ""; 
+                    alertedTemplateError.value = false;
+                    clearUserFilter();
+                    loadData();
+                } catch(e) { alert("切换视图失败"); }
             };
 
             const openNodeSettings = () => {
@@ -521,7 +588,8 @@
             const saveNodeSettings = async () => {
                 try {
                     await axios.post('/api/set_template', { node_id: curNodeId.value, template_id: settingsModal.value.templateId });
-                    settingsModal.value.show = false; clearUserFilter(); loadData();
+                    settingsModal.value.show = false; alertedTemplateError.value = false; ignoredTemplatePrompt.value = ""; 
+                    clearUserFilter(); loadData();
                 } catch(e) { alert("保存设置失败"); }
             };
 
@@ -599,12 +667,14 @@
             const getStatusText = (status) => {
                 if (!status) return '未知'; if (status === '运行中') return '运行'; if (status === '未运行') return '在线';
                 if (status === '离线' || status === '未连接') return '离线'; if (status.includes('无权限')) return '无权限';
+                if (status === '模板错误') return '模板错';
                 return status;
             };
 
             const getStatusTypeClass = (status) => {
                 if (!status) return 'status-offline'; if (status === '运行中') return 'status-running'; if (status === '未运行') return 'status-standby';
                 if (status === '离线' || status === '未连接') return 'status-offline'; if (status.includes('无权限')) return 'status-warning';
+                if (status === '模板错误') return 'status-error';
                 return 'status-offline';
             };
 
@@ -651,7 +721,7 @@
                 
                 setInterval(() => { 
                     let shouldLoad = true;
-                    if (authModal.value.show || settingsModal.value.show || userFilterModal.value.show) shouldLoad = false;
+                    if (authModal.value.show || settingsModal.value.show || userFilterModal.value.show || templatePromptModal.value.show) shouldLoad = false;
                     const node = nodeList.value.find(n => n.device_id === curNodeId.value);
                     if (node && node.has_password && !curPassword.value) shouldLoad = false;
                     if (curNodeId.value && shouldLoad) loadData(); 
@@ -665,7 +735,8 @@
                 closeModal, saveEdit, confirmPassword, hideNicknames, hideHistory, handleHistoryEdit, deleteNode,
                 nodeList, curNodeId, curNodeName, selectNode, isManageMode, getStatusText, getStatusTypeClass, resetRound,
                 historyFilterUser, historyFilterTotal, historyFilterDateRange, userFilterModal, filteredUserList, openUserFilter, applyUserFilter, clearUserFilter,
-                availableTemplates, settingsModal, openNodeSettings, saveNodeSettings, executeSearch
+                availableTemplates, settingsModal, openNodeSettings, saveNodeSettings, executeSearch,
+                templatePromptModal, ignoreTemplatePrompt, acceptTemplatePrompt, formatShortDate
             };
         }
     }).mount('#app');
