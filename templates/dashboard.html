@@ -16,14 +16,9 @@
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
     <style>
         :root {
-            --app-bg: #f4f3f9; 
-            --card-bg: #FFFFFF; --text-main: #1C1C1E; 
-            --text-sub: #A8A8A8; 
-            --border-color: #e5e5ea; 
-            --input-bg: #FFFFFF; --input-border: #e5e5ea;
-            --modal-overlay: rgba(0,0,0,0.5); 
-            --badge-bg: #f4f3f9;
-            --blue-card-bg: linear-gradient(135deg, #007AFF, #0055B3);
+            --app-bg: #f4f3f9; --card-bg: #FFFFFF; --text-main: #1C1C1E; --text-sub: #A8A8A8; 
+            --border-color: #e5e5ea; --input-bg: #FFFFFF; --input-border: #e5e5ea;
+            --modal-overlay: rgba(0,0,0,0.5); --badge-bg: #f4f3f9;
             --nav-bg: #454545; --nav-item-bg: rgba(0, 0, 0, 0.25); 
             --nav-text-normal: rgba(255, 255, 255, 0.5); --nav-text-active: #FFFFFF;
             --nav-bg-active: rgba(255, 255, 255, 0.15);
@@ -31,11 +26,9 @@
         }
         @media (prefers-color-scheme: dark) {
             :root {
-                --app-bg: #000000; --card-bg: #1C1C1E; --text-main: #FFFFFF; 
-                --text-sub: #A8A8A8; 
+                --app-bg: #000000; --card-bg: #1C1C1E; --text-main: #FFFFFF; --text-sub: #A8A8A8; 
                 --border-color: #38383A; --input-bg: #2C2C2E; --input-border: #3A3A3C;
                 --modal-overlay: rgba(0,0,0,0.8); --badge-bg: #2C2C2E;
-                --blue-card-bg: linear-gradient(135deg, #00509E, #003366);
                 --nav-bg: rgba(118, 118, 128, 0.24); --nav-item-bg: rgba(0, 0, 0, 0.2); 
                 --nav-text-normal: rgba(255, 255, 255, 0.5); --nav-text-active: #FFFFFF;
                 --nav-bg-active: rgba(255, 255, 255, 0.15);
@@ -50,74 +43,28 @@
         .nav-item-c { color: var(--nav-text-normal); padding: 6px 20px; border-radius: 50px; cursor: pointer; text-decoration: none; font-weight: 600; font-size: 0.95rem; transition: 0.3s; user-select: none; }
         .nav-item-c.active { background: var(--nav-bg-active); color: var(--nav-text-active); }
         .big-title { font-size: 34px; font-weight: 800; color: var(--text-main); margin: 0; letter-spacing: -0.02em; padding-left: 5px; }
-        
         .page-header { margin-top: 20px; margin-bottom: 20px; display: flex; align-items: center; min-height: 42px; }
-        
         .scale-container { max-width: 800px; margin: 0 auto; padding: 15px; min-height: 80vh; transform-origin: top center; }
         @media (max-width: 768px) { .scale-container { transform: scale(0.96); padding-top: 10px; } }
-        
         .apple-card { background: var(--card-bg); border-radius: 24px; padding: 16px; margin-bottom: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.025); color: var(--text-main); transition: background-color 0.3s; }
         
-        /* 🔥 极简状态点：彻底去除所有描边、内边距，化繁为简 */
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            transition: all 0.3s ease;
-            font-size: 0.85rem;
-            font-weight: 600;
-        }
-        .static-dot { 
-            width: 10px; 
-            height: 10px; 
-            border-radius: 50%; 
-            margin-right: 6px; 
-            flex-shrink: 0;
-            box-sizing: border-box;
-            transition: all 0.3s ease;
-        }
+        .status-badge { display: inline-flex; align-items: center; transition: all 0.3s ease; font-size: 0.85rem; font-weight: 600; }
+        .static-dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; flex-shrink: 0; box-sizing: border-box; transition: all 0.3s ease; }
+        .status-running { color: #34C759; } .status-running .static-dot { background-color: #34C759; box-shadow: 0 0 6px rgba(52, 199, 89, 0.4); }
+        .status-standby { color: #34C759; } .status-standby .static-dot { background-color: #34C759; }
+        .status-offline { color: #A8A8A8; } .status-offline .static-dot { background-color: #A8A8A8; }
+        .status-warning { color: #FF9500; } .status-warning .static-dot { background-color: #FF9500; }
+        .status-error { color: #FF3B30; } .status-error .static-dot { background-color: #FF3B30; box-shadow: 0 0 6px rgba(255, 59, 48, 0.5); }
 
-        .status-running { color: #34C759; }
-        .status-running .static-dot { background-color: #34C759; box-shadow: 0 0 6px rgba(52, 199, 89, 0.4); }
-        .status-standby { color: #34C759; }
-        .status-standby .static-dot { background-color: #34C759; }
-        .status-offline { color: #A8A8A8; }
-        .status-offline .static-dot { background-color: #A8A8A8; }
-        .status-warning { color: #FF9500; }
-        .status-warning .static-dot { background-color: #FF9500; }
-
-        .hl-card { 
-            background: var(--card-bg); 
-            border-radius: 24px; 
-            padding: 16px 12px; 
-            height: 110px; 
-            box-shadow: 0 6px 20px rgba(0,0,0,0.025); 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center;  
-            justify-content: center; 
-            transition: background-color 0.3s; 
-        }
-        .hl-num { 
-            font-size: 2.4rem; 
-            font-weight: 800; 
-            line-height: 1; 
-            margin-bottom: 6px;
-            font-family: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; 
-        }
-        .hl-label {
-            font-size: 0.85rem;
-            color: var(--text-sub);
-            font-weight: 500;
-        }
-        .num-account { color: var(--text-main); } 
-        .num-total { color: #5ec26b; } 
+        .hl-card { background: var(--card-bg); border-radius: 24px; padding: 16px 12px; height: 110px; box-shadow: 0 6px 20px rgba(0,0,0,0.025); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: background-color 0.3s; }
+        .hl-num { font-size: 2.4rem; font-weight: 800; line-height: 1; margin-bottom: 6px; font-family: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
+        .hl-label { font-size: 0.85rem; color: var(--text-sub); font-weight: 500; }
+        .num-account { color: var(--text-main); } .num-total { color: #5ec26b; } 
         
         .list-row { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border-color); }
         .list-row:last-child { border-bottom: none; padding-bottom: 0; }
-        
         .rank-container { max-height: 60vh; overflow-y: auto; padding-right: 5px; }
-        .rank-container::-webkit-scrollbar { width: 4px; }
-        .rank-container::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+        .rank-container::-webkit-scrollbar { width: 4px; } .rank-container::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
         
         .accordion-item { border: none; border-radius: 16px !important; margin-bottom: 12px; background: var(--card-bg); overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,0.025); }
         .accordion-header { padding: 12px 16px; background: var(--card-bg); cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.2s; }
@@ -127,24 +74,19 @@
         .accordion-body { background: var(--app-bg); padding: 15px 16px; border-top: 1px solid var(--border-color); animation: slideIn 0.2s ease-out; position: relative; }
         @keyframes slideIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
         .detail-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; color: var(--text-sub); }
-        .text-dark-adaptive { color: #000; }
-        @media (prefers-color-scheme: dark) { .text-dark-adaptive { color: #FFF; } }
-        .arrow { transition: transform 0.3s; font-size: 12px; color: var(--text-sub); margin-left: 10px; display: inline-block; }
-        .arrow.rotated { transform: rotate(180deg); }
+        .text-dark-adaptive { color: #000; } @media (prefers-color-scheme: dark) { .text-dark-adaptive { color: #FFF; } }
+        .arrow { transition: transform 0.3s; font-size: 12px; color: var(--text-sub); margin-left: 10px; display: inline-block; } .arrow.rotated { transform: rotate(180deg); }
         
         .custom-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--modal-overlay); z-index: 9999; display: flex; justify-content: center; align-items: center; }
         .custom-modal { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 24px; width: 90%; max-width: 400px; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.15); animation: popIn 0.2s ease-out; color: var(--text-main); }
         .full-screen-modal { width: 95%; max-width: 800px; height: 90%; display: flex; flex-direction: column; }
         @keyframes popIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
-        .form-control { background-color: var(--input-bg); border-color: var(--input-border); color: var(--text-main); border-radius: 10px; }
-        .form-control:focus { background-color: var(--input-bg); color: var(--text-main); border-color: #007AFF; box-shadow: 0 0 0 0.2rem rgba(0,122,255,0.25); }
-        .form-control:disabled { background-color: rgba(128,128,128,0.1); color: var(--text-sub); }
-        input::placeholder { color: var(--text-sub) !important; opacity: 0.7; }
+        .form-control, .form-select { background-color: var(--input-bg); border-color: var(--input-border); color: var(--text-main); border-radius: 10px; }
+        .form-control:focus, .form-select:focus { background-color: var(--input-bg); color: var(--text-main); border-color: #007AFF; box-shadow: 0 0 0 0.2rem rgba(0,122,255,0.25); }
         .icon-btn { width: 36px; height: 36px; border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background-color 0.2s, transform 0.1s; user-select: none; }
         .icon-btn:active { transform: scale(0.92); background-color: var(--icon-btn-active); }
         .icon-btn.active { background-color: var(--nav-bg-active); color: #007AFF; }
         .icon-btn.active ion-icon { color: #007AFF; }
-        
         ion-icon { font-size: 24px; color: var(--icon-color); --ionicon-stroke-width: 40px; transition: color 0.3s; }
         
         .date-range-badge { font-size: 0.75rem; color: var(--text-sub); background: var(--badge-bg); padding: 2px 8px; border-radius: 6px; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; }
@@ -156,153 +98,98 @@
         .border-bottom { border-bottom: 1px solid var(--border-color) !important; }
         th { white-space: nowrap; color: var(--text-sub); font-weight: 600; }
         @media (prefers-color-scheme: dark) { th { color: var(--text-main) !important; } }
-        .text-muted { color: var(--text-sub) !important; }
-        .fw-bold { color: var(--text-main) !important; }
-        
+        .text-muted { color: var(--text-sub) !important; } .fw-bold { color: var(--text-main) !important; }
         .nickname-text { font-weight: 400; font-size: 0.95rem; color: var(--text-main) !important; }
-
-        .text-primary { color: #007AFF !important; }
-        @media (prefers-color-scheme: dark) { .text-primary { color: #0A84FF !important; } }
+        .text-primary { color: #007AFF !important; } @media (prefers-color-scheme: dark) { .text-primary { color: #0A84FF !important; } }
         
         .node-row { display: flex; align-items: center; padding: 16px 20px; background: var(--card-bg); border-radius: 24px; margin-bottom: 12px; border: 2px solid transparent; cursor: pointer; transition: all 0.2s; }
-        .node-row:active { transform: scale(0.98); }
-        .node-row.selected { background: var(--card-bg); border-color: #34C759; }
-        
+        .node-row:active { transform: scale(0.98); } .node-row.selected { background: var(--card-bg); border-color: #34C759; }
         .node-status-dot { width: 10px; height: 10px; border-radius: 50%; margin: 0; }
         .node-status-dot.online { background: #34C759; box-shadow: 0 0 8px rgba(52, 199, 89, 0.5); }
         .node-status-dot.offline { background: #8E8E93; }
-        
         .del-btn { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: 0.2s; color: #FF3B30; }
-        .del-btn ion-icon { color: #FF3B30; }
-        .del-btn:hover { background: rgba(255, 59, 48, 0.1); }
-        .del-btn:active { transform: scale(0.9); }
-        
+        .del-btn ion-icon { color: #FF3B30; } .del-btn:hover { background: rgba(255, 59, 48, 0.1); }
         .log-modal-body { flex: 1; overflow-y: auto; padding: 0 10px; }
 
-        .top-blur-mask {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: calc(env(safe-area-inset-top) + 80px);
-            z-index: 9999;
-            pointer-events: none;
-            background: linear-gradient(to bottom, rgba(0,0,0,0.02) 0%, rgba(244, 243, 249, 0.5) 30%, rgba(244, 243, 249, 0) 100%);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 100%);
-            -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 100%);
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-        }
-        
+        .top-blur-mask { position: fixed; top: 0; left: 0; right: 0; height: calc(env(safe-area-inset-top) + 80px); z-index: 9999; pointer-events: none; background: linear-gradient(to bottom, rgba(0,0,0,0.02) 0%, rgba(244, 243, 249, 0.5) 30%, rgba(244, 243, 249, 0) 100%); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 100%); -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 100%); opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; }
         .top-blur-mask.show { opacity: 1; visibility: visible; }
+        @media (prefers-color-scheme: dark) { .top-blur-mask { background: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0, 0, 0, 0.6) 30%, rgba(0, 0, 0, 0) 100%); } }
 
-        @media (prefers-color-scheme: dark) {
-            .top-blur-mask { background: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0, 0, 0, 0.6) 30%, rgba(0, 0, 0, 0) 100%); }
-        }
-
-        .ios-search-bar {
-            display: flex;
-            align-items: center;
-            background: rgba(118, 118, 128, 0.12);
-            border-radius: 12px;
-            padding: 0 12px;
-            height: 40px;
-            margin-bottom: 16px;
-        }
+        .ios-search-bar { display: flex; align-items: center; background: rgba(118, 118, 128, 0.12); border-radius: 12px; padding: 0 12px; height: 40px; margin-bottom: 16px; box-sizing: border-box; }
         @media (prefers-color-scheme: dark) { .ios-search-bar { background: rgba(118, 118, 128, 0.24); } }
-        
         .ios-search-icon { color: var(--text-sub); font-size: 18px; margin-right: 6px; }
-        
-        .ios-search-select {
-            border: none;
-            background: transparent;
-            color: var(--text-main);
-            font-weight: 500;
-            font-size: 0.95rem;
-            outline: none;
-            appearance: none;
-            -webkit-appearance: none;
-            cursor: pointer;
-            padding: 0;
-        }
-        
+        .ios-search-select { border: none; background: transparent; color: var(--text-main); font-weight: 500; font-size: 0.95rem; outline: none; appearance: none; -webkit-appearance: none; cursor: pointer; padding: 0; }
         .ios-search-divider { width: 1px; height: 16px; background: var(--text-sub); opacity: 0.3; margin: 0 12px; }
-        
-        .ios-search-input {
-            flex: 1;
-            border: none;
-            background: transparent;
-            color: var(--text-main);
-            font-size: 0.95rem;
-            outline: none;
-            min-width: 0;
-        }
+        .ios-search-input { flex: 1; border: none; background: transparent; color: var(--text-main); font-size: 0.95rem; outline: none; min-width: 0; }
         .ios-search-input::placeholder { color: var(--text-sub); }
+        .clear-icon { color: var(--text-sub); font-size: 18px; cursor: pointer; opacity: 0.6; transition: 0.2s; } .clear-icon:active { opacity: 1; }
         
-        .clear-icon { color: var(--text-sub); font-size: 18px; cursor: pointer; opacity: 0.6; transition: 0.2s; }
-        .clear-icon:active { opacity: 1; }
-
-        .filter-summary-card {
-            background: var(--app-bg);
-            border-radius: 12px;
-            padding: 12px 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-            border: 1px solid var(--border-color);
-        }
-
+        .filter-summary-card { background: var(--app-bg); border-radius: 24px; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border: 1px solid var(--border-color); }
         .user-select-row { padding: 14px 12px; border-radius: 10px; cursor: pointer; transition: background 0.2s; border-bottom: 1px solid var(--border-color); }
-        .user-select-row:last-child { border-bottom: none; }
-        .user-select-row:active { background: var(--icon-btn-active); transform: scale(0.98); }
-
-        /* 🔥 新增日期选择器样式 */
-        .ios-date-input {
-            flex: 1;
-            background: rgba(118, 118, 128, 0.12);
-            border: none;
-            color: var(--text-main);
-            border-radius: 8px;
-            font-size: 0.9rem;
-            padding: 8px 10px;
-            outline: none;
-        }
-        @media (prefers-color-scheme: dark) {
-            .ios-date-input::-webkit-calendar-picker-indicator { filter: invert(1); }
-        }
+        .user-select-row:last-child { border-bottom: none; } .user-select-row:active { background: var(--icon-btn-active); transform: scale(0.98); }
+        
+        .adv-filter-btn { background: rgba(0, 122, 255, 0.1); color: #007AFF; border-radius: 12px; padding: 12px; text-align: center; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: 0.2s; user-select: none; }
+        .adv-filter-btn:active { transform: scale(0.98); background: rgba(0, 122, 255, 0.15); }
+        @media (prefers-color-scheme: dark) { .adv-filter-btn { background: rgba(10, 132, 255, 0.15); color: #0A84FF; } }
+        
+        .ios-date-input { width: 100%; box-sizing: border-box; background: rgba(118, 118, 128, 0.12); border: none; color: var(--text-main); border-radius: 10px; font-size: 0.95rem; padding: 10px 12px; outline: none; font-family: inherit; }
+        @media (prefers-color-scheme: dark) { .ios-date-input::-webkit-calendar-picker-indicator { filter: invert(1); } }
     </style>
 </head>
 <body>
-
 {% raw %}
 <div id="app" v-cloak>
-    
     <div id="dynamic-top-mask" class="top-blur-mask"></div>
+
+    <div class="custom-modal-overlay" v-if="settingsModal.show">
+        <div class="custom-modal">
+            <h5 class="fw-bold mb-3">监控设置</h5>
+            <div class="mb-4">
+                <label class="form-label text-muted small">日志解析模板</label>
+                <select class="form-select" v-model="settingsModal.templateId">
+                    <option v-for="t in availableTemplates" :value="t.id">{{ t.name }}</option>
+                </select>
+                <div class="mt-2 small text-muted">当前节点上传的日志，将由该模板规则在服务端进行提取解析。</div>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+                <button class="btn btn-secondary rounded-pill px-4" @click="settingsModal.show = false">取消</button>
+                <button class="btn btn-primary rounded-pill px-4" @click="saveNodeSettings">保存</button>
+            </div>
+        </div>
+    </div>
 
     <div class="custom-modal-overlay" v-if="userFilterModal.show">
         <div class="custom-modal">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="fw-bold m-0">历史筛选</h5>
+                <h5 class="fw-bold m-0">历史查询</h5>
                 <div class="icon-btn" @click="userFilterModal.show = false"><ion-icon name="close"></ion-icon></div>
             </div>
             
-            <div class="mb-3 d-flex align-items-center gap-2">
-                <input type="date" class="ios-date-input" v-model="userFilterModal.startDate" title="起始日期">
-                <span class="text-muted small">至</span>
-                <input type="date" class="ios-date-input" v-model="userFilterModal.endDate" title="结束日期">
+            <div class="adv-filter-btn mb-3" @click="userFilterModal.showAdvanced = !userFilterModal.showAdvanced">
+                <ion-icon :name="userFilterModal.showAdvanced ? 'chevron-up-outline' : 'options-outline'" style="font-size: 16px; margin-right: 4px; vertical-align: text-bottom;"></ion-icon>
+                {{ userFilterModal.showAdvanced ? '收起高级筛选' : '高级筛选 (时间 / 搜索)' }}
             </div>
 
-            <div class="ios-search-bar mb-2">
-                <ion-icon name="search" class="ios-search-icon"></ion-icon>
-                <input type="text" class="ios-search-input" placeholder="输入搜索昵称..." v-model="userFilterModal.searchText">
-                <ion-icon name="close-circle" class="clear-icon" v-show="userFilterModal.searchText" @click="userFilterModal.searchText = ''"></ion-icon>
-            </div>
-            
-            <div style="max-height: 40vh; overflow-y: auto; padding-right: 5px;">
+            <transition name="fade-slide">
+                <div v-show="userFilterModal.showAdvanced" class="mb-3 p-3" style="background: var(--app-bg); border-radius: 16px; border: 1px solid var(--border-color);">
+                    <div class="d-flex flex-column gap-2 mb-3">
+                        <input type="text" class="ios-date-input w-100" placeholder="起始时间 (可选)" onfocus="this.type='datetime-local'" onblur="if(!this.value) this.type='text'" v-model="userFilterModal.startDate">
+                        <input type="text" class="ios-date-input w-100" placeholder="结束时间 (可选)" onfocus="this.type='datetime-local'" onblur="if(!this.value) this.type='text'" v-model="userFilterModal.endDate">
+                    </div>
+                    
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="ios-search-bar m-0" style="flex: 1; min-width: 0; height: 40px;">
+                            <ion-icon name="search" class="ios-search-icon"></ion-icon>
+                            <input type="text" class="ios-search-input w-100" placeholder="模糊筛选昵称..." v-model="userFilterModal.searchText" @keyup.enter="executeSearch">
+                            <ion-icon name="close-circle" class="clear-icon" v-show="userFilterModal.searchText" @click="userFilterModal.searchText = ''"></ion-icon>
+                        </div>
+                        <button class="btn btn-primary rounded-pill m-0" style="flex-shrink: 0; height: 40px; padding: 0 20px; font-weight: 600; white-space: nowrap;" @click="executeSearch">查询</button>
+                    </div>
+                </div>
+            </transition>
+
+            <div class="text-muted small fw-bold mb-2 ps-1">快捷选择名单</div>
+            <div style="max-height: 35vh; overflow-y: auto; padding-right: 5px;">
                 <div v-if="userFilterModal.loading" class="text-center py-4 text-muted">加载中...</div>
                 <div v-else-if="filteredUserList.length === 0" class="text-center py-4 text-muted">无匹配用户</div>
                 <div v-for="user in filteredUserList" :key="user" class="user-select-row d-flex justify-content-between align-items-center" @click="applyUserFilter(user)">
@@ -348,12 +235,20 @@
                 <div v-if="historyLogsModal.loading" class="text-center py-5 text-muted">加载中...</div>
                 <div v-else-if="historyLogsModal.logs.length === 0" class="text-center py-5 text-muted">当日无数据</div>
                 <table v-else class="table table-borderless align-middle">
-                    <thead class="small border-bottom"><tr><th>时间</th><th>用户</th><th class="text-end">数量</th></tr></thead>
+                    <thead class="small border-bottom"><tr><th>时间</th><th>用户</th><th class="text-end">明细</th></tr></thead>
                     <tbody>
                         <tr v-for="log in historyLogsModal.logs" class="border-bottom">
                             <td class="text-muted small">{{ log.log_time.split(' ')[1] || log.log_time }}</td>
                             <td class="nickname-text">{{ hideNicknames ? '***' : log.nickname }}</td>
-                            <td class="text-end fw-bold text-primary">{{ log.quantity }}</td>
+                            <td class="text-end align-middle" style="padding-top: 10px; padding-bottom: 10px;">
+                                <div v-if="log.item_type && log.item_type !== '钻石'" class="text-success small mb-1" style="font-size: 0.75rem; white-space: normal; line-height: 1.2; word-break: break-all;">
+                                    {{ log.item_type }}
+                                </div>
+                                <span class="text-primary fw-bold" style="font-size: 1.1rem;">
+                                    <template v-if="log.item_type === '钻石'">{{ log.quantity }}</template>
+                                    <template v-else>+{{ log.quantity }}</template>
+                                </span>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -364,15 +259,16 @@
     <div class="scale-container">
         
         <transition name="fade-slide"><div v-show="curPage===1">
-            
             <div class="page-header justify-content-between align-items-center">
                 <div class="d-flex align-items-center">
                     <h1 class="big-title pe-2" style="font-size: 28px;">本轮概览</h1>
                     <div class="icon-btn" @click="resetRound" title="重新开始新一轮" style="width: 28px; height: 28px;">
                         <ion-icon name="refresh-outline" style="font-size: 18px;"></ion-icon>
                     </div>
+                    <div class="icon-btn ms-2" @click="openNodeSettings" title="模板设置" style="width: 28px; height: 28px;">
+                        <ion-icon name="options-outline" style="font-size: 18px;"></ion-icon>
+                    </div>
                 </div>
-                
                 <div class="status-badge" :class="getStatusTypeClass(stats.process_status)" v-if="stats.process_status">
                     <div class="static-dot"></div>
                     <span>{{ getStatusText(stats.process_status) }}</span>
@@ -380,25 +276,13 @@
             </div>
 
             <div class="row g-2 mb-4">
-                <div class="col-6">
-                    <div class="hl-card">
-                        <div class="hl-num num-account">{{ stats.total_users || 0 }}</div>
-                        <div class="hl-label">账号数量</div>
-                    </div>
-                </div>
-                <div class="col-6">
-                    <div class="hl-card">
-                        <div class="hl-num num-total">{{ stats.total_wins || 0 }}</div>
-                        <div class="hl-label">本轮产出</div>
-                    </div>
-                </div>
+                <div class="col-6"><div class="hl-card"><div class="hl-num num-account">{{ stats.total_users || 0 }}</div><div class="hl-label">账号数量</div></div></div>
+                <div class="col-6"><div class="hl-card"><div class="hl-num num-total">{{ stats.total_wins || 0 }}</div><div class="hl-label">本轮产出</div></div></div>
             </div>
 
             <div class="d-flex align-items-center mb-2 px-2">
                 <span class="fw-bold" style="font-size: 1.4rem; color: var(--text-main); letter-spacing: -0.01em;">收益排行</span>
-                <div class="icon-btn ms-2" style="width: 28px; height: 28px;" @click="hideNicknames = !hideNicknames" title="隐私模式">
-                    <ion-icon :name="hideNicknames ? 'eye-off-outline' : 'eye-outline'" style="font-size: 18px;"></ion-icon>
-                </div>
+                <div class="icon-btn ms-2" style="width: 28px; height: 28px;" @click="hideNicknames = !hideNicknames" title="隐私模式"><ion-icon :name="hideNicknames ? 'eye-off-outline' : 'eye-outline'" style="font-size: 18px;"></ion-icon></div>
                 <span class="date-range-badge ms-auto" v-if="stats.date_range">{{ stats.date_range }}</span>
             </div>
 
@@ -414,46 +298,40 @@
         </div></transition>
 
         <transition name="fade-slide"><div v-show="curPage===2">
-            
             <div class="page-header justify-content-between align-items-center">
                 <h1 class="big-title">日志明细</h1>
-                <div class="d-flex align-items-center">
-                    <div class="icon-btn" :class="{ 'active': filterSmallPacks }" @click="filterSmallPacks = !filterSmallPacks" title="过滤小包 (<24)">
-                        <ion-icon :name="filterSmallPacks ? 'funnel' : 'funnel-outline'"></ion-icon>
-                    </div>
-                </div>
+                <div class="d-flex align-items-center"><div class="icon-btn" :class="{ 'active': filterSmallPacks }" @click="filterSmallPacks = !filterSmallPacks" title="过滤小包 (<24)"><ion-icon :name="filterSmallPacks ? 'funnel' : 'funnel-outline'"></ion-icon></div></div>
             </div>
 
             <div class="apple-card mt-0">
-                
                 <div class="ios-search-bar">
                     <ion-icon name="search" class="ios-search-icon"></ion-icon>
-                    <select class="ios-search-select" v-model="searchType">
-                        <option value="nick">昵称</option>
-                        <option value="date">日期</option>
-                    </select>
+                    <select class="ios-search-select" v-model="searchType"><option value="nick">昵称</option><option value="date">日期</option></select>
                     <ion-icon name="chevron-down" style="font-size: 12px; color: var(--text-sub); margin-left: 2px; pointer-events: none;"></ion-icon>
-                    
                     <div class="ios-search-divider"></div>
-                    
                     <input type="text" class="ios-search-input" placeholder="输入搜索内容..." v-model="searchText">
                     <ion-icon name="close-circle" class="clear-icon" v-show="searchText" @click="searchText = ''"></ion-icon>
                 </div>
-
                 <transition name="fade-slide">
                     <div class="filter-summary-card" v-if="filterSmallPacks">
-                        <span class="text-muted fw-bold" style="font-size: 0.9rem;">大包总计数量 <span style="font-weight: 400; font-size: 0.8rem;">(已过滤小包)</span></span>
-                        <span class="text-primary fw-bold" style="font-size: 1.2rem;">{{ filteredTotal }}</span>
+                        <span class="text-muted fw-bold" style="font-size: 0.9rem;">大包总计数量 <span style="font-weight: 400; font-size: 0.8rem;">(已过滤小包)</span></span><span class="text-primary fw-bold" style="font-size: 1.2rem;">{{ filteredTotal }}</span>
                     </div>
                 </transition>
-
                 <div style="max-height: 65vh; overflow-y: auto;">
                     <table class="table table-borderless align-middle m-0">
-                        <thead class="small border-bottom"><tr><th style="padding-bottom: 10px;"><div class="d-flex align-items-center"><span>用户 / 时间</span><div class="icon-btn ms-1" style="width:28px; height:28px;" @click="hideNicknames = !hideNicknames"><ion-icon :name="hideNicknames ? 'eye-off-outline' : 'eye-outline'" style="font-size: 18px;"></ion-icon></div></div></th><th class="text-end" style="padding-bottom: 10px;">数量</th></tr></thead>
+                        <thead class="small border-bottom"><tr><th style="padding-bottom: 10px;"><div class="d-flex align-items-center"><span>用户 / 时间</span><div class="icon-btn ms-1" style="width:28px; height:28px;" @click="hideNicknames = !hideNicknames"><ion-icon :name="hideNicknames ? 'eye-off-outline' : 'eye-outline'" style="font-size: 18px;"></ion-icon></div></div></th><th class="text-end" style="padding-bottom: 10px;">明细</th></tr></thead>
                         <tbody><tr v-for="item in filteredDetails" class="border-bottom"><td class="py-3">
                             <div class="nickname-text text-truncate" style="max-width: 220px;">{{ hideNicknames ? '***' : item.nickname }}</div>
                             <div class="text-muted small" style="font-size: 0.75rem; margin-top: 4px;">{{ item.log_time }}</div>
-                        </td><td class="text-end py-3 align-middle"><span class="text-primary fw-bold" style="font-size: 1.1rem; min-width: 40px; text-align: right;">{{ item.quantity }}</span></td></tr></tbody>
+                        </td><td class="text-end py-3 align-middle">
+                            <div v-if="item.item_type && item.item_type !== '钻石'" class="text-success small mb-1" style="font-size: 0.75rem; white-space: normal; line-height: 1.2; word-break: break-all; text-align: right;">
+                                {{ item.item_type }}
+                            </div>
+                            <span class="text-primary fw-bold" style="font-size: 1.1rem; min-width: 40px; text-align: right;">
+                                <template v-if="item.item_type === '钻石'">{{ item.quantity }}</template>
+                                <template v-else>+{{ item.quantity }}</template>
+                            </span>
+                        </td></tr></tbody>
                     </table>
                 </div>
             </div>
@@ -465,23 +343,24 @@
                 <div class="d-flex align-items-center gap-1">
                     <div class="icon-btn" @click="hideHistory = !hideHistory" title="隐私开关"><ion-icon :name="hideHistory ? 'eye-off-outline' : 'eye-outline'"></ion-icon></div>
                     <div class="icon-btn" @click="handleHistoryEdit" title="修改展开项"><ion-icon name="create-outline"></ion-icon></div>
-                    <div class="icon-btn" @click="openUserFilter" :class="{ 'active': historyFilterUser }" title="筛选指定用户">
-                        <ion-icon :name="historyFilterUser ? 'funnel' : 'funnel-outline'"></ion-icon>
-                    </div>
+                    <div class="icon-btn" @click="openUserFilter" :class="{ 'active': historyFilterUser }" title="筛选查询"><ion-icon :name="historyFilterUser ? 'funnel' : 'funnel-outline'"></ion-icon></div>
                 </div>
             </div>
-
+            
             <transition name="fade-slide">
                 <div class="filter-summary-card mb-3" v-if="historyFilterUser" style="background: linear-gradient(135deg, rgba(0,122,255,0.08), rgba(52,199,89,0.05)); border: 1px solid rgba(0,122,255,0.2);">
-                    <div>
-                        <span class="text-muted fw-bold" style="font-size: 0.85rem;">累计产出 <span style="font-weight: 500; font-size: 0.75rem; color: var(--text-sub);">({{ historyFilterDateRange }})</span></span>
-                        <div class="nickname-text mt-1 fw-bold" style="font-size: 1.1rem; color: var(--text-main);">
-                            {{ hideNicknames ? '***' : historyFilterUser }}
+                    <div style="flex: 1; min-width: 0; padding-right: 15px;">
+                        <div class="text-muted fw-bold" style="font-size: 0.85rem;">累计产出</div>
+                        <div class="nickname-text mt-1 fw-bold text-truncate" style="font-size: 1.15rem; color: var(--text-main);">
+                            {{ hideNicknames && historyFilterUser !== '【全节点时段总和】' ? '***' : historyFilterUser }}
+                        </div>
+                        <div class="text-muted mt-1" style="font-size: 0.75rem; font-weight: 500; line-height: 1.2;">
+                            {{ historyFilterDateRange }}
                         </div>
                     </div>
-                    <div class="d-flex align-items-center">
-                        <span class="text-primary fw-bold me-3" style="font-size: 1.8rem; font-family: ui-rounded, 'SF Pro Rounded', sans-serif;">{{ historyFilterTotal }}</span>
-                        <div class="icon-btn" style="width: 28px; height: 28px; background: rgba(0,0,0,0.05);" @click="clearUserFilter" title="清除筛选">
+                    <div class="d-flex align-items-center flex-shrink-0">
+                        <span class="text-primary fw-bold me-3" style="font-size: 2.6rem; line-height: 1; font-family: ui-rounded, 'SF Pro Rounded', sans-serif;">{{ historyFilterTotal }}</span>
+                        <div class="icon-btn" style="width: 32px; height: 32px; background: rgba(0,0,0,0.05);" @click="clearUserFilter" title="清除筛选">
                             <ion-icon name="close" style="font-size: 16px; color: var(--text-main);"></ion-icon>
                         </div>
                     </div>
@@ -508,7 +387,6 @@
                 <div class="icon-btn" @click="isManageMode = !isManageMode" :class="{active: isManageMode}" title="管理节点"><ion-icon name="create-outline"></ion-icon></div>
             </div>
             <div v-if="nodeList.length === 0" class="text-center text-muted py-5"><ion-icon name="server-outline" style="font-size: 48px; opacity: 0.5; margin-bottom: 10px;"></ion-icon><div>暂无节点</div></div>
-            
             <div v-for="node in nodeList" :key="node.device_id" class="node-row" :class="{selected: curNodeId === node.device_id}" @click="selectNode(node)">
                 <div class="flex-grow-1">
                     <div class="d-flex align-items-center mb-1">
@@ -518,12 +396,9 @@
                     </div>
                     <div class="text-muted small" style="font-family: monospace;">ID: {{ node.device_id.substring(0, 8) }}...</div>
                 </div>
-                
                 <div class="d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; flex-shrink: 0;">
                     <div class="node-status-dot" :class="node.is_online ? 'online' : 'offline'" v-if="!isManageMode"></div>
-                    <div class="del-btn w-100 h-100" v-if="isManageMode" @click.stop="deleteNode(node)">
-                        <ion-icon name="remove-circle"></ion-icon>
-                    </div>
+                    <div class="del-btn w-100 h-100" v-if="isManageMode" @click.stop="deleteNode(node)"><ion-icon name="remove-circle"></ion-icon></div>
                 </div>
             </div>
         </div></transition>
@@ -551,41 +426,30 @@
         setup() {
             const curPage = ref(1);
             const expandedDates = ref({}); 
-            const stats = ref({ process_status: "未知", total_users: 0, total_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" });
-            const searchText = ref("");
-            const searchType = ref("nick");
-            const filterSmallPacks = ref(false);
+            const stats = ref({ process_status: "未知", current_template: "default", total_users: 0, total_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" });
+            const searchText = ref(""); const searchType = ref("nick"); const filterSmallPacks = ref(false);
             const editModal = ref({ show: false, data: { field1: '', field2: 0, field3: 0 } });
             const authModal = ref({ show: false, password: "", remember: false, targetNode: null }); 
             const historyLogsModal = ref({ show: false, loading: false, date: "", logs: [] });
             
-            const historyFilterUser = ref("");
-            const historyFilterTotal = ref(0);
-            const historyFilterDateRange = ref("");
-            
-            // 🔥 新增：用户筛选弹窗数据结构（含时间边界）
-            const userFilterModal = ref({ 
-                show: false, 
-                loading: false, 
-                users: [], 
-                searchText: "",
-                startDate: "", 
-                endDate: "" 
-            });
+            const historyFilterUser = ref(""); const historyFilterTotal = ref(0); const historyFilterDateRange = ref("");
+            const userFilterModal = ref({ show: false, showAdvanced: false, loading: false, users: [], searchText: "", startDate: "", endDate: "" });
 
-            const hideNicknames = ref(false);
-            const hideHistory = ref(false);
-            const nodeList = ref([]);
-            const curNodeId = ref("");
-            const curNodeName = ref("");
-            const curPassword = ref(""); 
-            const isAuthError = ref(false);
-            const isManageMode = ref(false);
+            const availableTemplates = ref([]);
+            const settingsModal = ref({ show: false, templateId: "default" });
+            const alertedTemplateError = ref(false); 
 
-            const changeTab = (page) => {
-                curPage.value = page;
-                isManageMode.value = false;
-                window.scrollTo({ top: 0, behavior: 'smooth' }); 
+            const hideNicknames = ref(false); const hideHistory = ref(false);
+            const nodeList = ref([]); const curNodeId = ref(""); const curNodeName = ref("");
+            const curPassword = ref(""); const isAuthError = ref(false); const isManageMode = ref(false);
+
+            const changeTab = (page) => { curPage.value = page; isManageMode.value = false; window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
+            const loadTemplates = async () => {
+                try {
+                    const res = await axios.get('/api/templates');
+                    availableTemplates.value = res.data.templates || [];
+                } catch(e) { console.error(e); }
             };
 
             const loadNodes = async () => {
@@ -602,56 +466,33 @@
 
             const selectNode = (node) => {
                 if (isManageMode.value) return; 
-                isAuthError.value = false;
+                isAuthError.value = false; alertedTemplateError.value = false;
                 localStorage.setItem('last_node_id', node.device_id);
-                
-                curNodeId.value = node.device_id;
-                curNodeName.value = node.nickname;
+                curNodeId.value = node.device_id; curNodeName.value = node.nickname;
                 clearUserFilter();
-
                 const savedPass = localStorage.getItem(`pwd_${node.device_id}`);
-                
                 if (node.has_password) {
-                    if (savedPass) {
-                        curPassword.value = savedPass;
-                        loadData();
-                    } else {
-                        curPassword.value = "";
-                        authModal.value.targetNode = node;
-                        authModal.value.password = "";
-                        authModal.value.remember = false;
-                        authModal.value.show = true;
+                    if (savedPass) { curPassword.value = savedPass; loadData(); } 
+                    else {
+                        curPassword.value = ""; authModal.value.targetNode = node; authModal.value.password = ""; authModal.value.remember = false; authModal.value.show = true;
                         stats.value = { process_status: "🔒 无权限", total_users: 0, total_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" };
                     }
-                } else {
-                    curPassword.value = "";
-                    loadData();
-                }
+                } else { curPassword.value = ""; loadData(); }
             };
 
             const confirmPassword = () => {
                 curPassword.value = authModal.value.password;
-                if (authModal.value.remember && authModal.value.targetNode) {
-                    localStorage.setItem(`pwd_${authModal.value.targetNode.device_id}`, authModal.value.password);
-                }
-                authModal.value.show = false;
-                isAuthError.value = false; 
-                loadData();
+                if (authModal.value.remember && authModal.value.targetNode) localStorage.setItem(`pwd_${authModal.value.targetNode.device_id}`, authModal.value.password);
+                authModal.value.show = false; isAuthError.value = false; loadData();
             };
 
             const deleteNode = async (node) => {
                 if(!confirm(`确定要删除节点 "${node.nickname}" 吗？\n删除后如果节点重新上线，它会自动恢复。`)) return;
                 try {
                     await axios.post('/api/node/delete', { device_id: node.device_id });
-                    if (curNodeId.value === node.device_id) {
-                        curNodeId.value = "";
-                        curNodeName.value = "";
-                        localStorage.removeItem('last_node_id');
-                    }
+                    if (curNodeId.value === node.device_id) { curNodeId.value = ""; curNodeName.value = ""; localStorage.removeItem('last_node_id'); }
                     await loadNodes(); 
-                } catch(e) {
-                    alert("删除失败");
-                }
+                } catch(e) { alert("删除失败"); }
             };
 
             const loadData = async () => {
@@ -660,57 +501,53 @@
                     const res = await axios.get(`/api/stats?node_id=${encodeURIComponent(curNodeId.value)}&password=${encodeURIComponent(curPassword.value)}`);
                     stats.value = res.data;
                     isAuthError.value = false;
+
+                    if (stats.value.process_status === '模板错误' && !alertedTemplateError.value) {
+                        alertedTemplateError.value = true;
+                        alert("⚠️ 日志解析失败！\n\n检测到有日志上传，但格式与当前设定的模板不匹配。\n\n请点击“概览”页右上角的【设置(齿轮)图标】修改解析模板！");
+                    }
                 } catch(e) {
                     if (e.response && e.response.status === 403) {
                         stats.value = { process_status: "🔒 无权限", total_users: 0, total_wins: 0, rank_list: [], details: [], history_data: [], date_range: "" };
                         if (!isAuthError.value) {
-                            alert("密码错误，请重新输入");
-                            isAuthError.value = true;
-                            curPassword.value = ""; 
-                            if (localStorage.getItem(`pwd_${curNodeId.value}`)) {
-                                localStorage.removeItem(`pwd_${curNodeId.value}`);
-                            }
+                            alert("密码错误，请重新输入"); isAuthError.value = true; curPassword.value = ""; 
+                            if (localStorage.getItem(`pwd_${curNodeId.value}`)) localStorage.removeItem(`pwd_${curNodeId.value}`);
                             const node = nodeList.value.find(n => n.device_id === curNodeId.value);
-                            if (node) {
-                                authModal.value.targetNode = node;
-                                authModal.value.password = "";
-                                authModal.value.show = true;
-                            }
+                            if (node) { authModal.value.targetNode = node; authModal.value.password = ""; authModal.value.show = true; }
                         }
                     }
                 }
             };
 
+            const openNodeSettings = () => {
+                if (!curNodeId.value) return;
+                settingsModal.value.templateId = stats.value.current_template || "default";
+                settingsModal.value.show = true;
+            };
+
+            const saveNodeSettings = async () => {
+                try {
+                    await axios.post('/api/set_template', { node_id: curNodeId.value, template_id: settingsModal.value.templateId });
+                    settingsModal.value.show = false; alertedTemplateError.value = false; 
+                    clearUserFilter(); alert("✅ 模板设置已保存！\n\n如果客户端仍在运行，下一批日志将采用新模板进行解析。"); loadData();
+                } catch(e) { alert("保存设置失败"); }
+            };
+
             const resetRound = async () => {
                 if (!curNodeId.value) return;
-                const confirmed = confirm("确认要开启新一轮统计吗？\n当前的展示数据将会清零，但不会影响历史页面的长期数据记录。");
-                if (!confirmed) return;
-                
-                try {
-                    await axios.post('/api/reset_round', { device_id: curNodeId.value });
-                    await loadData();
-                } catch(e) {
-                    alert("重置失败，请检查后端接口是否已部署");
-                }
+                if (!confirm("确认要开启新一轮统计吗？\n当前的展示数据将会清零，但不会影响历史页面的长期数据记录。")) return;
+                try { await axios.post('/api/reset_round', { device_id: curNodeId.value }); await loadData(); } catch(e) { alert("重置失败"); }
             };
 
             const openUserFilter = async () => {
                 if (!curNodeId.value) return;
-                userFilterModal.value.show = true;
-                userFilterModal.value.loading = true;
-                userFilterModal.value.searchText = "";
-                // 每次打开默认不重置时间输入，方便二次修改，如果需要每次清空可以取消注释下面两行
-                // userFilterModal.value.startDate = "";
-                // userFilterModal.value.endDate = "";
-                userFilterModal.value.users = [];
+                userFilterModal.value.show = true; 
+                userFilterModal.value.showAdvanced = false; 
+                userFilterModal.value.loading = true; userFilterModal.value.searchText = ""; userFilterModal.value.users = [];
                 try {
                     const res = await axios.get(`/api/user_total?node_id=${curNodeId.value}`);
                     userFilterModal.value.users = res.data.users || [];
-                } catch (e) {
-                    console.error("加载用户列表失败");
-                } finally {
-                    userFilterModal.value.loading = false;
-                }
+                } catch (e) { console.error("加载失败"); } finally { userFilterModal.value.loading = false; }
             };
 
             const filteredUserList = computed(() => {
@@ -719,166 +556,126 @@
                 return userFilterModal.value.users.filter(u => u.toLowerCase().includes(raw));
             });
 
-            // 🔥 升级：带着时间范围向后端发起请求，并渲染提示文本
-            const applyUserFilter = async (nickname) => {
-                historyFilterUser.value = nickname;
-                userFilterModal.value.show = false;
+            const executeSearch = () => {
+                const raw = userFilterModal.value.searchText.trim();
+                if (!raw) {
+                    if (!userFilterModal.value.startDate && !userFilterModal.value.endDate) {
+                        alert("如果查询全节点，请至少设置一个【起始时间】或【结束时间】！"); return;
+                    }
+                    queryAllUsers();
+                } else {
+                    applyUserFilter(raw);
+                }
+            };
+
+            const queryAllUsers = async () => {
+                historyFilterUser.value = "【全节点时段总和】"; 
+                userFilterModal.value.show = false; 
                 historyFilterTotal.value = "...";
                 
-                let ds = userFilterModal.value.startDate;
-                let de = userFilterModal.value.endDate;
+                let ds = userFilterModal.value.startDate; let de = userFilterModal.value.endDate;
+                let query = `/api/user_total?node_id=${curNodeId.value}&calc_all=1`;
+                
+                if (ds) query += `&start_date=${ds}`; if (de) query += `&end_date=${de}`;
+                historyFilterDateRange.value = `${ds ? ds.replace('T', ' ') : '最早期'} 至 ${de ? de.replace('T', ' ') : '最新'}`;
+                
+                try { const res = await axios.get(query); historyFilterTotal.value = res.data.total || 0; } 
+                catch (e) { historyFilterTotal.value = 0; }
+            };
+
+            const applyUserFilter = async (nickname) => {
+                historyFilterUser.value = nickname; userFilterModal.value.show = false; historyFilterTotal.value = "...";
+                let ds = userFilterModal.value.startDate; let de = userFilterModal.value.endDate;
                 let query = `/api/user_total?node_id=${curNodeId.value}&nickname=${encodeURIComponent(nickname)}`;
                 
-                if (ds) query += `&start_date=${ds}`;
-                if (de) query += `&end_date=${de}`;
+                if (ds) query += `&start_date=${ds}`; if (de) query += `&end_date=${de}`;
+                if (!ds && !de) historyFilterDateRange.value = "所有时间"; else historyFilterDateRange.value = `${ds ? ds.replace('T', ' ') : '最早期'} 至 ${de ? de.replace('T', ' ') : '最新'}`;
                 
-                if (!ds && !de) {
-                    historyFilterDateRange.value = "所有时间";
-                } else {
-                    historyFilterDateRange.value = `${ds || '最早期'} 至 ${de || '今日'}`;
-                }
-
-                try {
-                    const res = await axios.get(query);
-                    historyFilterTotal.value = res.data.total || 0;
-                } catch (e) {
-                    historyFilterTotal.value = 0;
-                }
+                try { const res = await axios.get(query); historyFilterTotal.value = res.data.total || 0; } catch (e) { historyFilterTotal.value = 0; }
             };
 
-            const clearUserFilter = () => {
-                historyFilterUser.value = "";
-                historyFilterTotal.value = 0;
-            };
+            const clearUserFilter = () => { historyFilterUser.value = ""; historyFilterTotal.value = 0; };
 
             const viewHistoryLogs = async (date) => {
-                historyLogsModal.value.date = date;
-                historyLogsModal.value.show = true;
-                historyLogsModal.value.loading = true;
-                historyLogsModal.value.logs = [];
+                historyLogsModal.value.date = date; historyLogsModal.value.show = true; historyLogsModal.value.loading = true; historyLogsModal.value.logs = [];
                 try {
                     const res = await axios.get(`/api/history_logs?node_id=${curNodeId.value}&date=${date}`);
                     historyLogsModal.value.logs = res.data.logs;
-                } catch(e) { console.error(e); } 
-                finally { historyLogsModal.value.loading = false; }
+                } catch(e) { console.error(e); } finally { historyLogsModal.value.loading = false; }
             };
 
             const getStatusText = (status) => {
-                if (!status) return '未知';
-                if (status === '运行中') return '运行';
-                if (status === '未运行') return '在线';
-                if (status === '离线' || status === '未连接') return '离线';
-                if (status.includes('无权限')) return '无权限';
+                if (!status) return '未知'; if (status === '运行中') return '运行'; if (status === '未运行') return '在线';
+                if (status === '离线' || status === '未连接') return '离线'; if (status.includes('无权限')) return '无权限';
+                if (status === '模板错误') return '模板错';
                 return status;
             };
 
             const getStatusTypeClass = (status) => {
-                if (!status) return 'status-offline';
-                if (status === '运行中') return 'status-running';
-                if (status === '未运行') return 'status-standby';
-                if (status === '离线' || status === '未连接') return 'status-offline';
-                if (status.includes('无权限')) return 'status-warning';
+                if (!status) return 'status-offline'; if (status === '运行中') return 'status-running'; if (status === '未运行') return 'status-standby';
+                if (status === '离线' || status === '未连接') return 'status-offline'; if (status.includes('无权限')) return 'status-warning';
+                if (status === '模板错误') return 'status-error';
                 return 'status-offline';
             };
 
             const filteredDetails = computed(() => {
                 if(!stats.value.details) return [];
                 const rawSearch = searchText.value.trim();
-                
                 return stats.value.details.filter(i => {
                     if (filterSmallPacks.value && i.quantity < 24) return false;
                     if (!rawSearch) return true;
-
-                    if (searchType.value === 'nick') {
-                        const cleanNick = i.nickname.replace(/\s+/g, '').toLowerCase();
-                        const cleanSearch = rawSearch.replace(/\s+/g, '').toLowerCase();
-                        return cleanNick.includes(cleanSearch);
-                    } else {
-                        const logDate = i.log_time.substring(0, 10).replace(/\D/g, ''); 
-                        const searchDate = rawSearch.replace(/\D/g, '');
-                        return logDate.includes(searchDate);
-                    }
+                    if (searchType.value === 'nick') return i.nickname.replace(/\s+/g, '').toLowerCase().includes(rawSearch.replace(/\s+/g, '').toLowerCase());
+                    else return i.log_time.substring(0, 10).replace(/\D/g, '').includes(rawSearch.replace(/\D/g, ''));
                 });
             });
 
-            const filteredTotal = computed(() => {
-                return filteredDetails.value.reduce((sum, item) => sum + item.quantity, 0);
-            });
-
+            const filteredTotal = computed(() => { return filteredDetails.value.reduce((sum, item) => sum + item.quantity, 0); });
             const toggleDate = (date) => { expandedDates.value[date] = !expandedDates.value[date]; };
 
             const handleHistoryEdit = () => {
                 const openedDates = Object.keys(expandedDates.value).filter(d => expandedDates.value[d]);
                 if (openedDates.length === 0) { alert("当前无数据展开"); return; }
-                const targetDate = openedDates[0];
-                const dayData = stats.value.history_data.find(d => d.date === targetDate);
-                if (dayData) {
-                    editModal.value.data = { field1: dayData.date, field2: dayData.daily_sum, field3: dayData.user_count };
-                    editModal.value.show = true;
-                }
+                const targetDate = openedDates[0]; const dayData = stats.value.history_data.find(d => d.date === targetDate);
+                if (dayData) { editModal.value.data = { field1: dayData.date, field2: dayData.daily_sum, field3: dayData.user_count }; editModal.value.show = true; }
             };
 
             const closeModal = () => { editModal.value.show = false; };
-
             const saveEdit = async () => {
-                try {
-                    await axios.post('/api/update_history', {
-                        date: editModal.value.data.field1,
-                        device_id: curNodeId.value,
-                        manual_sum: editModal.value.data.field2,
-                        manual_users: editModal.value.data.field3
-                    });
-                    editModal.value.show = false;
-                    loadData();
-                } catch(e) { alert("保存失败"); }
+                try { await axios.post('/api/update_history', { date: editModal.value.data.field1, device_id: curNodeId.value, manual_sum: editModal.value.data.field2, manual_users: editModal.value.data.field3 }); editModal.value.show = false; loadData(); } 
+                catch(e) { alert("保存失败"); }
             };
 
             onMounted(async () => {
                 editModal.value.show = false;
-                
                 const topMask = document.getElementById('dynamic-top-mask');
                 if (topMask) {
                     window.addEventListener('scroll', () => {
                         const st = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
-                        if (st > 15) {
-                            topMask.classList.add('show');
-                        } else {
-                            topMask.classList.remove('show');
-                        }
+                        if (st > 15) topMask.classList.add('show'); else topMask.classList.remove('show');
                     }, { passive: true });
                 }
 
+                await loadTemplates();
                 await loadNodes();
                 loadData();
                 
                 setInterval(() => { 
                     let shouldLoad = true;
-                    if (authModal.value.show) shouldLoad = false;
-                    
+                    if (authModal.value.show || settingsModal.value.show || userFilterModal.value.show) shouldLoad = false;
                     const node = nodeList.value.find(n => n.device_id === curNodeId.value);
-                    if (node && node.has_password && !curPassword.value) {
-                        shouldLoad = false;
-                    }
-
-                    if (curNodeId.value && shouldLoad) {
-                        loadData(); 
-                    }
-                    
+                    if (node && node.has_password && !curPassword.value) shouldLoad = false;
+                    if (curNodeId.value && shouldLoad) loadData(); 
                     loadNodes(); 
                 }, 2000);
             });
 
             return { 
-                curPage, changeTab, stats, 
-                searchText, searchType, filterSmallPacks, filteredDetails, filteredTotal,
-                expandedDates, toggleDate,
-                editModal, authModal, historyLogsModal, viewHistoryLogs,
-                closeModal, saveEdit, confirmPassword,
-                hideNicknames, hideHistory, handleHistoryEdit, deleteNode,
-                nodeList, curNodeId, curNodeName, selectNode, isManageMode,
-                getStatusText, getStatusTypeClass, resetRound,
-                historyFilterUser, historyFilterTotal, historyFilterDateRange,
-                userFilterModal, filteredUserList, openUserFilter, applyUserFilter, clearUserFilter
+                curPage, changeTab, stats, searchText, searchType, filterSmallPacks, filteredDetails, filteredTotal,
+                expandedDates, toggleDate, editModal, authModal, historyLogsModal, viewHistoryLogs,
+                closeModal, saveEdit, confirmPassword, hideNicknames, hideHistory, handleHistoryEdit, deleteNode,
+                nodeList, curNodeId, curNodeName, selectNode, isManageMode, getStatusText, getStatusTypeClass, resetRound,
+                historyFilterUser, historyFilterTotal, historyFilterDateRange, userFilterModal, filteredUserList, openUserFilter, applyUserFilter, clearUserFilter,
+                availableTemplates, settingsModal, openNodeSettings, saveNodeSettings, executeSearch
             };
         }
     }).mount('#app');
